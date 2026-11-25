@@ -17,7 +17,7 @@ h2{font-size:16px;margin:0 0 10px}h2 small{font-weight:400;color:var(--suave);ma
 textarea{width:100%;min-height:210px;font:14px/1.4 ui-monospace,Menlo,monospace;padding:10px;border:1px solid var(--borda);border-radius:8px;resize:vertical}
 button,.botao{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--borda);background:#fff;cursor:pointer;color:var(--tinta);text-decoration:none;display:inline-block}
 button.principal{background:var(--azul);border-color:var(--azul);color:#fff;font-weight:600}
-button.perigo{color:var(--verm)}button:disabled{opacity:.5;cursor:default}
+button.usarTipo{padding:2px 8px;font-size:12px;margin-left:6px;border-color:var(--ambar)}button.perigo{color:var(--verm)}button:disabled{opacity:.5;cursor:default}
 .linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
 .dica{color:var(--suave);font-size:13px;margin:6px 0}
 table{border-collapse:collapse;width:100%}th,td{padding:7px 9px;text-align:left;border-bottom:1px solid var(--borda);vertical-align:top}
@@ -88,6 +88,7 @@ dialog::backdrop{background:#0007}
 
 <section>
   <h2>3. Resultados</h2>
+  <div class="dica" id="porTipo" hidden style="margin-bottom:10px"></div>
   <div class="aviso erro" id="semGab" hidden style="font-size:14px;padding:8px 12px;margin-bottom:10px">Ainda não há gabarito salvo, por isso as notas não aparecem. Envie o cartão “Gabarito de correção” no passo 1.</div>
   <div class="resumo" id="resumo"></div>
   <div class="linha" style="margin:0 0 10px">
@@ -282,13 +283,21 @@ function desenhar(e) {
     <div><b>${notas.length ? fmt(Math.max(...notas)) : "—"}</b><span>maior nota</span></div>
     <div><b>${notas.length ? fmt(Math.min(...notas)) : "—"}</b><span>menor nota</span></div>
     <div><b style="color:${pend ? "var(--ambar)" : "var(--verde)"}">${pend}</b><span>precisam de conferência</span></div>` : "";
+  const porTipo = {}, tiposGab = tipos.map(x => x[0]);
+  cs.forEach(c => { const t = c.info.tipo_prova || ""; porTipo[t] = (porTipo[t] || 0) + 1; });
+  const nomes = Object.keys(porTipo).sort((a, b) => (a === "") - (b === "") || a.localeCompare(b));
+  $("porTipo").hidden = !(cs.length && (nomes.length > 1 || tiposGab.length > 1));
+  $("porTipo").innerHTML = "Por tipo de prova: " + nomes.map(t => {
+    const falta = t && tiposGab.length > 1 && !tiposGab.includes(t) && !tiposGab.includes("*");
+    return `<b>${porTipo[t]}</b> ${t ? "Tipo " + esc(t) : "sem tipo lido"}${falta ? ' <span class="aviso">sem gabarito</span>' : ""}`;
+  }).join(" · ");
   $("vazio").hidden = cs.length > 0;
   $("semGab").hidden = !(cs.length && !tipos.length);
   $("lista").innerHTML = cs.filter(c => !so || c.avisos.length).map(c => `
     <tr class="cartao" data-id="${c.id}">
       <td>${esc(c.info.turma)}</td><td>${esc(c.info.numero)}</td><td>${esc(c.info.matricula)}</td>
       <td>${esc(c.info.nome) || `<span class="dica">${esc(c.arquivo)} — pág. ${c.pagina}</span>`}${c.editado ? ' <span class="dica">(editado)</span>' : ""}</td>
-      <td>${esc(c.info.tipo_prova)}</td>
+      <td>${esc(c.info.tipo_prova)}${c.tipo_sugerido ? `<button class="usarTipo" data-tipo="${esc(c.tipo_sugerido.tipo)}" title="${c.tipo_sugerido.certas} acertos com o gabarito ${esc(c.tipo_sugerido.tipo)}, ${c.tipo_sugerido.outro} com o outro">Usar ${esc(c.tipo_sugerido.tipo)}?</button>` : ""}</td>
       <td class="num"><b>${c.maximo ? fmt(c.nota) : "—"}</b>${c.maximo ? `<span class="dica"> / ${fmt(c.maximo)}</span>` : ""}</td>
       <td class="num">${c.maximo ? c.certa : "—"}</td><td class="num">${c.maximo ? c.errada + c.dupla : "—"}</td><td class="num">${c.maximo ? c.branco : "—"}</td>
       <td>${c.avisos.map(a => `<span class="aviso ${c.erro ? "erro" : ""}">${esc(a)}</span>`).join("") || '<span class="ok">ok</span>'}</td>
@@ -376,6 +385,12 @@ function abrirDetalhe(d) {
 }
 $("lista").onclick = async ev => {
   const tr = ev.target.closest("tr.cartao"); if (!tr) return;
+  const bt = ev.target.closest("button.usarTipo");
+  if (bt) {
+    await api("/api/cartao/" + tr.dataset.id, {method: "POST", headers: {"Content-Type": "application/json"},
+                                               body: JSON.stringify({info: {tipo_prova: bt.dataset.tipo}})});
+    return atualizar();
+  }
   abrirDetalhe(await api("/api/cartao/" + tr.dataset.id));
 };
 $("dFechar").onclick = () => $("dlg").close();

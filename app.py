@@ -238,7 +238,10 @@ def _avisos(c: dict, cor: dict | None, gab: dict) -> list[str]:
     if gab:
         chave = gabarito.escolher(gab, c["info"].get("tipo_prova", ""))
         if chave is None:
-            av.append("não sei qual gabarito usar (tipo de prova não lido)")
+            tipo, sug = c["info"].get("tipo_prova", ""), _sugerir_tipo(c, gab)
+            motivo = f"não há gabarito do tipo {tipo}" if tipo else "tipo de prova não lido"
+            av.append(f"não sei qual gabarito usar ({motivo})" + (
+                f" — parece Tipo {sug['tipo']}: {sug['certas']} acertos contra {sug['outro']}; confirme" if sug else ""))
         elif cor:
             ns = {r["n"] for r in c["respostas"]}
             if ns != set(chave):
@@ -251,6 +254,18 @@ def _avisos(c: dict, cor: dict | None, gab: dict) -> list[str]:
     return av
 
 
+def _sugerir_tipo(c: dict, gab: dict) -> dict | None:
+    """Cartão sem gabarito definido: compara com o gabarito de cada tipo e sugere o que combina bem mais."""
+    if c["erro"] or not c["respostas"] or gabarito.escolher(gab, c["info"].get("tipo_prova", "")) is not None:
+        return None
+    placar = sorted(((gabarito.corrigir(c["respostas"], chave, estado["pesos"])["certa"], t)
+                     for t, chave in gab.items() if t != "*"), reverse=True)
+    n = len(c["respostas"])   # só sugere com folga: aluno de nota baixa combina mal com os dois gabaritos
+    if len(placar) < 2 or placar[0][0] < n / 2 or placar[0][0] - placar[1][0] < max(3, round(0.1 * n)):
+        return None
+    return {"tipo": placar[0][1], "certas": placar[0][0], "outro": placar[1][0]}
+
+
 def _opcoes(tipo: str) -> list[str]:
     return {"CE": ["C", "E"]}.get(tipo, list(tipo))
 
@@ -258,7 +273,7 @@ def _opcoes(tipo: str) -> list[str]:
 def _resumo(c: dict, gab: dict) -> dict:
     cor = _corrigido(c, gab)
     return {"id": c["id"], "arquivo": c["arquivo"], "pagina": c["pagina"], "info": c["info"], "erro": c["erro"],
-            "editado": c["editado"], "avisos": _avisos(c, cor, gab), "questoes": len(c["respostas"]),
+            "editado": c["editado"], "avisos": _avisos(c, cor, gab), "tipo_sugerido": _sugerir_tipo(c, gab), "questoes": len(c["respostas"]),
             "nota": cor and cor["nota"], "maximo": cor and cor["maximo"],
             "certa": cor and cor["certa"], "errada": cor and cor["errada"],
             "branco": cor and cor["branco"], "dupla": cor and cor["dupla"]}
