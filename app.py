@@ -329,6 +329,17 @@ def api_gabarito():
     return api_estado()
 
 
+@app.delete("/api/gabarito/<tipo>")
+def api_gabarito_remover(tipo):
+    """Tira o gabarito de um tipo de prova ('*' = o gabarito sem tipo)."""
+    with trava:
+        gab, _ = gabarito.ler_texto(estado["gabarito_texto"])
+        gab.pop(tipo, None)
+        estado["gabarito_texto"] = gabarito.para_texto(gab)
+        _salvar()
+    return api_estado()
+
+
 @app.post("/api/gabarito-arquivo")
 def api_gabarito_arquivo():
     """Planilha/CSV/TXT com o gabarito, ou um cartão preenchido com as respostas certas. Devolve o texto."""
@@ -349,7 +360,7 @@ def api_gabarito_arquivo():
             return jsonify({"texto": gabarito.para_texto(gab), "avisos": avisos})
         if ext == ".txt":
             return jsonify({"texto": Path(caminho).read_text(encoding="utf-8-sig"), "avisos": []})
-        texto, avisos = estado["gabarito_texto"] if request.form.get("somar") else "", []
+        texto, avisos = estado["gabarito_texto"] if (request.form.get("somar") or request.args.get("somar")) else "", []
         for img in omr.carregar_paginas(caminho):
             reta, H = omr.endireitar(img)
             lay = omr.montar_layout(reta, omr.achar_bolhas(reta, H), H)

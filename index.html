@@ -17,6 +17,9 @@ h2{font-size:16px;margin:0 0 10px}h2 small{font-weight:400;color:var(--suave);ma
 textarea{width:100%;min-height:210px;font:14px/1.4 ui-monospace,Menlo,monospace;padding:10px;border:1px solid var(--borda);border-radius:8px;resize:vertical}
 button,.botao{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--borda);background:#fff;cursor:pointer;color:var(--tinta);text-decoration:none;display:inline-block}
 button.principal{background:var(--azul);border-color:var(--azul);color:#fff;font-weight:600}
+.gabItem{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--borda);border-radius:8px;margin-bottom:8px}
+.gabItem b{font-size:15px}.gabItem .ok{font-size:13px}.gabItem button{margin-left:auto;padding:3px 10px;font-size:13px}
+.gabVazio{padding:14px;border:1px dashed var(--borda);border-radius:8px;color:var(--suave);font-size:14px;margin-bottom:8px}
 button.usarTipo{padding:2px 8px;font-size:12px;margin-left:6px;border-color:var(--ambar)}button.perigo{color:var(--verm)}button:disabled{opacity:.5;cursor:default}
 .linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
 .dica{color:var(--suave);font-size:13px;margin:6px 0}
@@ -55,25 +58,30 @@ dialog::backdrop{background:#0007}
   <h2>1. Gabarito <small id="gabResumo"></small></h2>
   <div class="duas">
     <div>
-      <textarea id="gab" spellcheck="false" placeholder="1 C&#10;2 E&#10;19 011&#10;21 D&#10;22 X   (X = anulada)"></textarea>
+      <p class="dica" style="margin-top:0">Envie o cartão <b>“Gabarito de correção”</b> de cada tipo de prova (PDF ou imagem). Se a prova tem Tipo A e Tipo B, são dois gabaritos: pode enviar os dois de uma vez ou um depois do outro.</p>
+      <div id="gabLista"></div>
       <div class="linha">
-        <button class="principal" id="salvarGab">Salvar gabarito</button>
-        <button id="abrirGab">Carregar de arquivo…</button>
-        <input type="file" id="arqGab" hidden accept=".xlsx,.csv,.txt,.pdf,.png,.jpg,.jpeg,.tif,.tiff">
+        <button class="principal" id="abrirGab">Enviar gabarito</button>
+        <input type="file" id="arqGab" hidden multiple accept=".xlsx,.csv,.txt,.pdf,.png,.jpg,.jpeg,.tif,.tiff">
         <span id="gabMsg" class="dica"></span>
       </div>
+      <details id="gabTexto" style="margin-top:14px">
+        <summary class="dica" style="cursor:pointer">Digitar ou corrigir o gabarito à mão</summary>
+        <textarea id="gab" spellcheck="false" placeholder="1 C&#10;2 E&#10;19 011&#10;21 D&#10;22 X   (X = anulada)"></textarea>
+        <p class="dica">Uma questão por linha: número e resposta. <b>C</b>/<b>E</b> para certo/errado, <b>A–E</b> para múltipla escolha, os dígitos (ex.: <b>011</b>) para numérica e <b>X</b> para questão anulada (todos ganham o ponto). Para mais de um tipo de prova, escreva <b>TIPO A</b> numa linha e o gabarito dela embaixo, depois <b>TIPO B</b> etc. Também aceita planilha (.xlsx/.csv) pelo botão acima.</p>
+        <div class="linha"><button id="salvarGab">Salvar o que digitei</button></div>
+      </details>
     </div>
     <div>
-      <p class="dica" style="margin-top:0">Uma questão por linha: número e resposta. <b>C</b>/<b>E</b> para certo/errado, <b>A–E</b> para múltipla escolha, os dígitos (ex.: <b>011</b>) para numérica e <b>X</b> para questão anulada (todos ganham o ponto).<br>
-      Se há mais de uma versão da prova, escreva <b>TIPO A</b> numa linha e o gabarito dela embaixo, depois <b>TIPO B</b> etc.<br>
-      O jeito mais fácil: envie os <b>cartões “Gabarito de correção”</b> (PDF ou imagem) em “Carregar de arquivo” ou junto com os cartões dos alunos — a ferramenta reconhece e preenche aqui sozinha, um bloco por tipo de prova. Também aceita planilha (.xlsx/.csv).</p>
+      <p class="dica" style="margin-top:0"><b>Quanto vale cada item</b> (igual para todos os tipos de prova)</p>
       <table class="pesos">
         <tr><th>Itens</th><th>Vale cada (acerto)</th><th>Desconta (erro)</th></tr>
-        <tr><td>Tipo A — certo/errado</td><td><input id="pCEa" type="number" step="0.001"></td><td><input id="pCEe" type="number" step="0.001" min="0"></td></tr>
-        <tr><td>Tipo B — numérica</td><td><input id="pNUMa" type="number" step="0.001"></td><td><input id="pNUMe" type="number" step="0.001" min="0"></td></tr>
-        <tr><td>Tipo C — múltipla escolha</td><td><input id="pABCDEa" type="number" step="0.001"></td><td><input id="pABCDEe" type="number" step="0.001" min="0"></td></tr>
+        <tr><td>Itens tipo A — certo/errado</td><td><input id="pCEa" type="number" step="0.001"></td><td><input id="pCEe" type="number" step="0.001" min="0"></td></tr>
+        <tr><td>Itens tipo B — numérica</td><td><input id="pNUMa" type="number" step="0.001"></td><td><input id="pNUMe" type="number" step="0.001" min="0"></td></tr>
+        <tr><td>Itens tipo C — múltipla escolha</td><td><input id="pABCDEa" type="number" step="0.001"></td><td><input id="pABCDEe" type="number" step="0.001" min="0"></td></tr>
       </table>
       <p class="dica">Em branco não soma nem desconta. Dupla marcação conta como erro.</p>
+      <div class="linha"><button id="salvarPesos">Salvar valores</button><span id="pesosMsg" class="dica"></span></div>
     </div>
   </div>
 </section>
@@ -263,6 +271,12 @@ function desenhar(e) {
     for (const t of ["CE", "NUM", "ABCDE"]) { $("p" + t + "a").value = e.pesos[t].acerto; $("p" + t + "e").value = e.pesos[t].erro; }
   }
   const tipos = Object.entries(e.gabarito);
+  $("gabLista").innerHTML = tipos.length ? tipos.map(([t, n]) => `
+    <div class="gabItem"><b>${t === "*" ? "Gabarito único" : "Prova Tipo " + esc(t)}</b><span class="ok">✓ ${n} questões</span>
+      <button class="perigo" data-tipo="${esc(t)}">Remover</button></div>`).join("")
+    : '<div class="gabVazio">Nenhum gabarito enviado ainda.</div>';
+  $("abrirGab").textContent = tipos.length ? "+ Adicionar gabarito de outro tipo" : "Enviar gabarito";
+  $("abrirGab").className = tipos.length ? "" : "principal";
   $("gabResumo").textContent = tipos.length ? tipos.map(([t, n]) => (t === "*" ? "" : "Tipo " + t + ": ") + n + " questões").join(" · ") : "ainda não informado";
   if (!gabSujo && e.gabarito_avisos.length) $("gabMsg").innerHTML = e.gabarito_avisos.map(a => `<span class="aviso">${esc(a)}</span>`).join("");
   const p = e.progresso;
@@ -310,7 +324,23 @@ async function atualizar() {
 }
 
 $("gab").addEventListener("input", () => { gabSujo = true; $("gabMsg").textContent = "alterações não salvas"; });
-document.querySelectorAll(".pesos input").forEach(i => i.addEventListener("input", () => { gabSujo = true; $("gabMsg").textContent = "alterações não salvas"; }));
+document.querySelectorAll(".pesos input").forEach(i => i.addEventListener("input", () => { gabSujo = true; $("pesosMsg").textContent = "valores não salvos"; }));
+$("salvarPesos").onclick = async () => { await salvarGab(); $("pesosMsg").textContent = "valores salvos"; };
+$("gabLista").onclick = async ev => {
+  const b = ev.target.closest("button[data-tipo]"); if (!b) return;
+  const nome = b.dataset.tipo === "*" ? "o gabarito único" : "o gabarito do Tipo " + b.dataset.tipo;
+  if (!confirm("Remover " + nome + "?")) return;
+  gabSujo = false;
+  desenhar(await api("/api/gabarito/" + encodeURIComponent(b.dataset.tipo), {method: "DELETE"}));
+  $("gabMsg").textContent = "";
+};
+function depoisDoGabarito(avisos) {
+  const ts = Object.keys(estado.gabarito);
+  const quais = ts.map(t => t === "*" ? "único" : "Tipo " + t).join(" e ");
+  $("gabMsg").innerHTML = (ts.length ? `Gabarito ${esc(quais)} salvo. A prova tem outro tipo? Adicione o próximo. `
+                                     : '<span class="aviso erro">não achei respostas nesse arquivo</span> ')
+    + (avisos || []).map(a => `<span class="aviso">${esc(a)}</span>`).join("");
+}
 async function salvarGab() {
   const pesos = {};
   for (const t of ["CE", "NUM", "ABCDE"]) pesos[t] = {acerto: +$("p" + t + "a").value || 0, erro: +$("p" + t + "e").value || 0};
@@ -321,29 +351,36 @@ async function salvarGab() {
 $("salvarGab").onclick = salvarGab;
 $("abrirGab").onclick = () => $("arqGab").click();
 $("arqGab").onchange = async ev => {
-  const f = ev.target.files[0]; if (!f) return;
-  if (MODO === "navegador") {           // cartão-gabarito entra pelo mesmo caminho dos cartões e é reconhecido
-    ev.target.value = "";
-    if (/\.(pdf|png|jpe?g|tiff?|bmp)$/i.test(f.name)) return enviarNavegador([f]);
-    try {
-      const r = await api("/api/gabarito-arquivo?nome=" + encodeURIComponent(f.name), {method: "POST", body: new Uint8Array(await f.arrayBuffer())});
-      $("gab").value = r.texto; await salvarGab();
-      $("gabMsg").innerHTML = "gabarito lido e salvo. " + r.avisos.map(a => `<span class="aviso">${esc(a)}</span>`).join("");
-    } catch (e) { $("gabMsg").innerHTML = `<span class="aviso erro">${esc(e.message)}</span>`; }
-    return;
-  }
-  const fd = new FormData(); fd.append("arquivo", f);
-  if ($("gab").value.trim() && /\.(pdf|png|jpe?g|tiff?)$/i.test(f.name) && !gabSujo) fd.append("somar", "1");
+  const fs = [...ev.target.files]; ev.target.value = ""; if (!fs.length) return;
+  const img = n => /\.(pdf|png|jpe?g|tiff?|bmp)$/i.test(n);
   $("gabMsg").textContent = "lendo…";
+  let avisos = [];
   try {
-    const r = await api("/api/gabarito-arquivo", {method: "POST", body: fd});
-    $("gab").value = r.texto;
-    await salvarGab();   // já salva: as notas aparecem na hora
-    const n = Object.values(estado.gabarito).reduce((a, b) => a + b, 0);
-    $("gabMsg").innerHTML = (n ? "gabarito lido e salvo. " : '<span class="aviso erro">não achei respostas nesse arquivo</span> ')
-      + r.avisos.map(a => `<span class="aviso">${esc(a)}</span>`).join("");
+    if (MODO === "navegador") {          // cartão-gabarito entra pelo mesmo caminho dos cartões e é reconhecido
+      const cartoes = fs.filter(f => img(f.name));
+      if (cartoes.length) {
+        const antes = estado.gabarito_texto;
+        await enviarNavegador(cartoes);
+        desenhar(await api("/api/estado"));
+        if (estado.gabarito_texto === antes) avisos.push("esse arquivo não foi reconhecido como cartão “Gabarito de correção” — entrou na lista de cartões de alunos");
+      }
+    }
+    for (const f of fs) {
+      if (MODO === "navegador" && img(f.name)) continue;
+      let r;
+      if (MODO === "navegador") {
+        r = await api("/api/gabarito-arquivo?nome=" + encodeURIComponent(f.name), {method: "POST", body: new Uint8Array(await f.arrayBuffer())});
+      } else {
+        const fd = new FormData(); fd.append("arquivo", f);
+        if (img(f.name)) fd.append("somar", "1");     // cada cartão-gabarito soma um tipo; não apaga os outros
+        r = await api("/api/gabarito-arquivo", {method: "POST", body: fd});
+      }
+      $("gab").value = r.texto; avisos = avisos.concat(r.avisos);
+      await salvarGab();   // já salva: as notas aparecem na hora
+    }
+    if (MODO === "navegador") desenhar(await api("/api/estado"));
+    depoisDoGabarito(avisos);
   } catch (e) { $("gabMsg").innerHTML = `<span class="aviso erro">${esc(e.message)}</span>`; }
-  ev.target.value = "";
 };
 
 async function enviar(arquivos) {
