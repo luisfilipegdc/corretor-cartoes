@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corretor de Cartões</title>
+<style>
+:root{--fundo:#f5f6f8;--painel:#fff;--tinta:#1c2330;--suave:#667085;--borda:#dfe3ea;--azul:#1f5fd0;--verde:#1b8a3a;--verm:#c62828;--ambar:#9a6700;--ambar-f:#fff4d6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fundo);color:var(--tinta);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{padding:18px 24px 6px}h1{font-size:22px;margin:0}header p{margin:2px 0 0;color:var(--suave)}
+main{padding:12px 24px 60px;display:grid;gap:16px;max-width:1500px}
+section{background:var(--painel);border:1px solid var(--borda);border-radius:10px;padding:16px 18px}
+h2{font-size:16px;margin:0 0 10px}h2 small{font-weight:400;color:var(--suave);margin-left:6px}
+.duas{display:grid;grid-template-columns:minmax(260px,1fr) minmax(280px,1fr);gap:18px}
+@media(max-width:820px){.duas{grid-template-columns:1fr}}
+textarea{width:100%;min-height:210px;font:14px/1.4 ui-monospace,Menlo,monospace;padding:10px;border:1px solid var(--borda);border-radius:8px;resize:vertical}
+button,.botao{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--borda);background:#fff;cursor:pointer;color:var(--tinta);text-decoration:none;display:inline-block}
+button.principal{background:var(--azul);border-color:var(--azul);color:#fff;font-weight:600}
+button.perigo{color:var(--verm)}button:disabled{opacity:.5;cursor:default}
+.linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.dica{color:var(--suave);font-size:13px;margin:6px 0}
+table{border-collapse:collapse;width:100%}th,td{padding:7px 9px;text-align:left;border-bottom:1px solid var(--borda);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--suave);white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr.cartao{cursor:pointer}tbody tr.cartao:hover{background:#f0f4fb}
+.pesos input{width:64px;padding:5px;border:1px solid var(--borda);border-radius:6px;font:inherit}
+.pesos td,.pesos th{border:0;padding:4px 8px 4px 0}
+.solta{border:2px dashed #b9c2d0;border-radius:10px;padding:26px;text-align:center;color:var(--suave);cursor:pointer}
+.solta.sobre{border-color:var(--azul);background:#eef4ff;color:var(--azul)}
+.aviso{background:var(--ambar-f);color:var(--ambar);border-radius:6px;padding:2px 7px;font-size:12.5px;display:inline-block;margin:1px 3px 1px 0}
+.erro{background:#fde7e7;color:var(--verm)}.ok{color:var(--verde)}
+progress{width:100%;height:10px}
+.resumo{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:10px}.resumo b{font-size:20px;display:block}
+.resumo span{color:var(--suave);font-size:12.5px}
+.rolagem{overflow-x:auto}
+dialog{border:0;border-radius:12px;padding:0;width:min(1250px,96vw);height:92vh;box-shadow:0 20px 60px #0005}
+dialog::backdrop{background:#0007}
+.det{display:grid;grid-template-columns:1fr 390px;height:100%}
+.det .img{overflow:auto;background:#444}.det .img img{width:100%;display:block}
+.det aside{padding:14px 16px;overflow:auto;border-left:1px solid var(--borda)}
+.det label{display:block;font-size:12px;color:var(--suave);margin-top:8px}
+.det input{width:100%;padding:6px 8px;border:1px solid var(--borda);border-radius:6px;font:inherit}
+.itens input{width:74px;text-transform:uppercase}.itens td{padding:3px 6px;border:0}
+.itens tr.certa td.st{color:var(--verde)}.itens tr.errada td.st,.itens tr.dupla td.st{color:var(--verm)}
+.itens tr.duvida{background:var(--ambar-f)}
+@media(max-width:900px){.det{grid-template-columns:1fr;grid-template-rows:55% 45%}}
+</style>
+</head>
+<body>
+<header><h1>Corretor de Cartões Resposta</h1><p id="modo">Tudo roda neste computador; nenhum cartão sai daqui.</p></header>
+<div id="carga" hidden style="margin:10px 24px;padding:12px 16px;background:#eef4ff;border:1px solid #c9d8f5;border-radius:10px"><b>Preparando o corretor…</b> <span id="cargaTxt"></span><div class="dica">Na primeira vez baixa cerca de 40 MB; depois abre rápido.</div></div>
+<main>
+<section>
+  <h2>1. Gabarito <small id="gabResumo"></small></h2>
+  <div class="duas">
+    <div>
+      <textarea id="gab" spellcheck="false" placeholder="1 C&#10;2 E&#10;19 011&#10;21 D&#10;22 X   (X = anulada)"></textarea>
+      <div class="linha">
+        <button class="principal" id="salvarGab">Salvar gabarito</button>
+        <button id="abrirGab">Carregar de arquivo…</button>
+        <input type="file" id="arqGab" hidden accept=".xlsx,.csv,.txt,.pdf,.png,.jpg,.jpeg,.tif,.tiff">
+        <span id="gabMsg" class="dica"></span>
+      </div>
+    </div>
+    <div>
+      <p class="dica" style="margin-top:0">Uma questão por linha: número e resposta. <b>C</b>/<b>E</b> para certo/errado, <b>A–E</b> para múltipla escolha, os dígitos (ex.: <b>011</b>) para numérica e <b>X</b> para questão anulada (todos ganham o ponto).<br>
+      Se há mais de uma versão da prova, escreva <b>TIPO A</b> numa linha e o gabarito dela embaixo, depois <b>TIPO B</b> etc.<br>
+      O jeito mais fácil: envie os <b>cartões “Gabarito de correção”</b> (PDF ou imagem) em “Carregar de arquivo” ou junto com os cartões dos alunos — a ferramenta reconhece e preenche aqui sozinha, um bloco por tipo de prova. Também aceita planilha (.xlsx/.csv).</p>
+      <table class="pesos">
+        <tr><th>Itens</th><th>Vale cada (acerto)</th><th>Desconta (erro)</th></tr>
+        <tr><td>Tipo A — certo/errado</td><td><input id="pCEa" type="number" step="0.001"></td><td><input id="pCEe" type="number" step="0.001" min="0"></td></tr>
+        <tr><td>Tipo B — numérica</td><td><input id="pNUMa" type="number" step="0.001"></td><td><input id="pNUMe" type="number" step="0.001" min="0"></td></tr>
+        <tr><td>Tipo C — múltipla escolha</td><td><input id="pABCDEa" type="number" step="0.001"></td><td><input id="pABCDEe" type="number" step="0.001" min="0"></td></tr>
+      </table>
+      <p class="dica">Em branco não soma nem desconta. Dupla marcação conta como erro.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>2. Cartões respondidos</h2>
+  <div class="solta" id="solta">Arraste aqui os PDFs escaneados ou as imagens dos cartões, ou clique para escolher</div>
+  <input type="file" id="arqCartoes" hidden multiple accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp">
+  <div id="prog" hidden style="margin-top:10px"><div class="dica" id="progTxt"></div><progress id="progBar" max="1" value="0"></progress></div>
+  <div id="progErro" class="aviso erro" hidden></div>
+</section>
+
+<section>
+  <h2>3. Resultados</h2>
+  <div class="aviso erro" id="semGab" hidden style="font-size:14px;padding:8px 12px;margin-bottom:10px">Ainda não há gabarito salvo, por isso as notas não aparecem. Envie o cartão “Gabarito de correção” no passo 1.</div>
+  <div class="resumo" id="resumo"></div>
+  <div class="linha" style="margin:0 0 10px">
+    <a class="botao" id="baixar" href="/exportar.xlsx">Baixar planilha (.xlsx)</a>
+    <label><input type="checkbox" id="soAvisos"> Mostrar só os que precisam de conferência</label>
+    <span style="flex:1"></span>
+    <button id="reler" title="Refaz a leitura das imagens já enviadas; o que você corrigiu à mão é mantido">Reler cartões</button>
+    <button class="perigo" id="limpar">Apagar todos os cartões</button>
+  </div>
+  <div class="rolagem"><table>
+    <thead><tr><th>Turma</th><th>Nº</th><th>Matrícula</th><th>Nome</th><th>Tipo</th><th class="num">Nota</th><th class="num">Certas</th><th class="num">Erradas</th><th class="num">Branco</th><th>Conferir</th></tr></thead>
+    <tbody id="lista"></tbody>
+  </table></div>
+  <p class="dica" id="vazio">Nenhum cartão lido ainda.</p>
+</section>
+</main>
+
+<dialog id="dlg"><div class="det">
+  <div class="img"><img id="dImg" alt="Cartão com as marcações lidas"></div>
+  <aside>
+    <div class="linha" style="margin:0"><b id="dTit" style="flex:1"></b><button id="dFechar">Fechar</button></div>
+    <p class="dica">Contorno <b class="ok">verde</b> = certa, <b style="color:var(--verm)">vermelho</b> = errada, <b style="color:#0a6ad0">azul</b> = resposta do gabarito.</p>
+    <div id="dAvisos"></div>
+    <label>Nome<input id="dNome"></label>
+    <label>Matrícula<input id="dMat"></label>
+    <div class="linha" style="margin:0"><label style="flex:1">Turma<input id="dTurma"></label><label style="flex:1">Nº<input id="dNum"></label><label style="flex:1">Tipo de prova<input id="dTipo" maxlength="1"></label></div>
+    <p class="dica">Se a leitura errou alguma questão, corrija o campo “lido” e salve. Use <b>A+C</b> para dupla e vazio para em branco.</p>
+    <table class="itens"><thead><tr><th>Q</th><th>Lido</th><th>Gab.</th><th></th></tr></thead><tbody id="dItens"></tbody></table>
+    <div class="linha"><button class="principal" id="dSalvar">Salvar correções</button><button class="perigo" id="dApagar">Excluir cartão</button></div>
+  </aside>
+</div></dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = n => n == null ? "—" : Number(n).toLocaleString("pt-BR", {maximumFractionDigits: 2});
+let estado = null, atual = null, gabSujo = false, vistoGab = "";
+
+// ---- dois modos: com o servidor local (iniciar.command) ou tudo dentro do navegador (GitHub Pages)
+let MODO = "servidor", nucleo = null, seq = 0;
+const esperas = new Map();
+let progLocal = {ativo: false, feito: 0, total: 0, etapa: "", erro: "", gabaritos: []};
+
+function pedirNucleo(msg, transferir) {
+  return new Promise((ok, falha) => {
+    const id = ++seq;
+    esperas.set(id, {ok, falha});
+    nucleo.postMessage({...msg, id}, transferir || []);
+  });
+}
+async function bin(metodo, rota, corpo, tipoCorpo) {   // resposta crua do corretor no navegador
+  const r = await pedirNucleo({tipo: "chamar", metodo, rota, corpo, tipoCorpo});
+  return r;
+}
+async function ligarNavegador() {
+  MODO = "navegador";
+  $("modo").textContent = "Tudo roda dentro deste navegador; nenhum cartão é enviado para a internet.";
+  $("carga").hidden = false;
+  nucleo = new Worker(new URL("web/nucleo.js", location.href));
+  nucleo.onmessage = ev => {
+    const m = ev.data;
+    if (m.tipo === "status") { $("cargaTxt").textContent = m.texto; return; }
+    const e = esperas.get(m.id); esperas.delete(m.id);
+    if (e) (m.ok ? e.ok(m) : e.falha(new Error(m.erro)));
+  };
+  nucleo.onerror = ev => { $("cargaTxt").textContent = "Falha ao carregar o corretor: " + (ev.message || "erro"); };
+  await pedirNucleo({tipo: "iniciar", base: new URL(".", location.href).href});
+  $("carga").hidden = true;
+}
+
+async function api(url, opt) {
+  if (MODO === "navegador") {
+    const corpo = opt && opt.body, tipo = opt && opt.headers && opt.headers["Content-Type"];
+    const r = await bin((opt && opt.method) || "GET", url, corpo ?? null, tipo ?? (corpo ? "application/octet-stream" : null));
+    let j = {};
+    try { j = JSON.parse(new TextDecoder().decode(r.dados)); } catch (e) { /* resposta sem JSON */ }
+    if (r.status >= 400) throw new Error(j.erro || "Falha (" + r.status + ")");
+    if (url === "/api/estado") j.progresso = progLocal;
+    return j;
+  }
+  let r;
+  try { r = await fetch(url, opt); }
+  catch (e) { throw new Error("O corretor não está respondendo. Abra o iniciar.command e use o endereço http://127.0.0.1:5055"); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || "Falha (" + r.status + ")");
+  return j;
+}
+
+// ---- leitura dos arquivos dentro do navegador
+function carregarScript(src) {
+  return new Promise((ok, falha) => {
+    if (document.querySelector(`script[src="${src}"]`)) return ok();
+    const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => falha(new Error("não consegui baixar " + src));
+    document.head.appendChild(s);
+  });
+}
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+let ocr = null;
+async function lerTexto(png) {   // OCR do cabeçalho: [[texto, x do centro, y do topo], ...] em fração da imagem
+  if (!ocr) {
+    await carregarScript("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js");
+    ocr = await Tesseract.createWorker("por");
+  }
+  const blob = new Blob([png], {type: "image/png"});
+  const bmp = await createImageBitmap(blob);
+  const {data} = await ocr.recognize(blob);
+  return (data.lines || []).map(l => {
+    // no quadro de cima, ignora o que está na faixa do logotipo (à esquerda), que só atrapalha o nome da prova
+    const alto = l.bbox.y0 / bmp.height < 0.6;
+    const ps = (l.words || []).filter(w => !alto || (w.bbox.x0 + w.bbox.x1) / 2 / bmp.width > 0.115);
+    if (!ps.length) return ["", 0, 0];
+    const x0 = Math.min(...ps.map(w => w.bbox.x0)), x1 = Math.max(...ps.map(w => w.bbox.x1));
+    return [ps.map(w => w.text).join(" ").trim(), (x0 + x1) / 2 / bmp.width, l.bbox.y0 / bmp.height];
+  }).filter(l => l[0]);
+}
+async function paginasDe(arquivo) {   // [{nome, pagina, obter()}]: obter devolve os bytes de uma folha
+  if (!/\.pdf$/i.test(arquivo.name))
+    return [{nome: arquivo.name, pagina: 1, obter: async () => new Uint8Array(await arquivo.arrayBuffer())}];
+  await carregarScript(PDFJS + "pdf.min.js");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js";
+  const doc = await pdfjsLib.getDocument({data: await arquivo.arrayBuffer()}).promise;
+  return Array.from({length: doc.numPages}, (_, i) => ({nome: arquivo.name, pagina: i + 1, obter: async () => {
+    const pag = await doc.getPage(i + 1);
+    const base = pag.getViewport({scale: 1});
+    const vp = pag.getViewport({scale: 1700 / base.width});
+    const tela = document.createElement("canvas"); tela.width = Math.round(vp.width); tela.height = Math.round(vp.height);
+    const ctx = tela.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, tela.width, tela.height);
+    await pag.render({canvasContext: ctx, viewport: vp, intent: "print"}).promise;   // "print" não pausa com a aba em segundo plano
+    const blob = await new Promise(r => tela.toBlob(r, "image/jpeg", 0.92));
+    pag.cleanup();
+    return new Uint8Array(await blob.arrayBuffer());
+  }}));
+}
+async function enviarNavegador(arquivos) {
+  if (progLocal.ativo) { alert("Já há uma leitura em andamento."); return; }
+  progLocal = {ativo: true, feito: 0, total: 0, etapa: "Abrindo arquivos", erro: "", gabaritos: []};
+  desenhar({...estado, progresso: progLocal});
+  try {
+    let tarefas = [];
+    for (const a of arquivos) {
+      try { tarefas = tarefas.concat(await paginasDe(a)); }
+      catch (e) { tarefas.push({nome: a.name, pagina: 1, obter: async () => new Uint8Array(0)}); }
+    }
+    progLocal.total = tarefas.length; progLocal.etapa = "Lendo cartões";
+    for (let i = 0; i < tarefas.length; i += 5) {          // de 5 em 5: cada grupo já entra na lista
+      for (const t of tarefas.slice(i, i + 5)) {
+        desenhar({...estado, progresso: progLocal});
+        let bytes; try { bytes = await t.obter(); } catch (e) { bytes = new Uint8Array(0); }
+        const r = await api(`/api/pagina?pagina=${t.pagina}&nome=${encodeURIComponent(t.nome)}`, {method: "POST", body: bytes});
+        if (r.tem_imagem) {
+          try {
+            const png = await bin("GET", `/cabecalho/${r.id}.png`);
+            const linhas = await lerTexto(png.dados);
+            await api(`/api/pagina/${r.id}/texto`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({linhas})});
+          } catch (e) { console.warn("OCR do cabeçalho falhou", e); }
+        }
+        progLocal.feito++;
+      }
+      const g = await api("/api/grupo", {method: "POST"});
+      progLocal.gabaritos = progLocal.gabaritos.concat(g.gabaritos || []);
+      desenhar(await api("/api/estado"));
+    }
+  } catch (e) { progLocal.erro = e.message; }
+  progLocal.ativo = false; progLocal.etapa = "";
+  desenhar(await api("/api/estado"));
+}
+
+function desenhar(e) {
+  estado = e;
+  if (!gabSujo) {
+    $("gab").value = e.gabarito_texto;
+    for (const t of ["CE", "NUM", "ABCDE"]) { $("p" + t + "a").value = e.pesos[t].acerto; $("p" + t + "e").value = e.pesos[t].erro; }
+  }
+  const tipos = Object.entries(e.gabarito);
+  $("gabResumo").textContent = tipos.length ? tipos.map(([t, n]) => (t === "*" ? "" : "Tipo " + t + ": ") + n + " questões").join(" · ") : "ainda não informado";
+  if (!gabSujo && e.gabarito_avisos.length) $("gabMsg").innerHTML = e.gabarito_avisos.map(a => `<span class="aviso">${esc(a)}</span>`).join("");
+  const p = e.progresso;
+  if (p.gabaritos.length && p.gabaritos.join() !== vistoGab) {
+    vistoGab = p.gabaritos.join(); gabSujo = false; $("gab").value = e.gabarito_texto;
+    $("gabMsg").innerHTML = `<span class="aviso">gabarito lido dos cartões: ${esc(p.gabaritos.join("; "))}</span>`;
+  }
+  $("prog").hidden = !p.ativo;
+  if (p.ativo) { $("progTxt").textContent = `${p.etapa}: ${p.feito} de ${p.total}`; $("progBar").value = p.total ? p.feito / p.total : 0; }
+  $("progErro").hidden = !p.erro; $("progErro").textContent = p.erro;
+  const so = $("soAvisos").checked;
+  const cs = e.cartoes;
+  const notas = cs.filter(c => c.nota != null && c.maximo).map(c => c.nota);
+  const pend = cs.filter(c => c.avisos.length).length;
+  $("resumo").innerHTML = cs.length ? `
+    <div><b>${cs.length}</b><span>cartões lidos</span></div>
+    <div><b>${notas.length ? fmt(notas.reduce((a, b) => a + b, 0) / notas.length) : "—"}</b><span>nota média</span></div>
+    <div><b>${notas.length ? fmt(Math.max(...notas)) : "—"}</b><span>maior nota</span></div>
+    <div><b>${notas.length ? fmt(Math.min(...notas)) : "—"}</b><span>menor nota</span></div>
+    <div><b style="color:${pend ? "var(--ambar)" : "var(--verde)"}">${pend}</b><span>precisam de conferência</span></div>` : "";
+  $("vazio").hidden = cs.length > 0;
+  $("semGab").hidden = !(cs.length && !tipos.length);
+  $("lista").innerHTML = cs.filter(c => !so || c.avisos.length).map(c => `
+    <tr class="cartao" data-id="${c.id}">
+      <td>${esc(c.info.turma)}</td><td>${esc(c.info.numero)}</td><td>${esc(c.info.matricula)}</td>
+      <td>${esc(c.info.nome) || `<span class="dica">${esc(c.arquivo)} — pág. ${c.pagina}</span>`}${c.editado ? ' <span class="dica">(editado)</span>' : ""}</td>
+      <td>${esc(c.info.tipo_prova)}</td>
+      <td class="num"><b>${c.maximo ? fmt(c.nota) : "—"}</b>${c.maximo ? `<span class="dica"> / ${fmt(c.maximo)}</span>` : ""}</td>
+      <td class="num">${c.maximo ? c.certa : "—"}</td><td class="num">${c.maximo ? c.errada + c.dupla : "—"}</td><td class="num">${c.maximo ? c.branco : "—"}</td>
+      <td>${c.avisos.map(a => `<span class="aviso ${c.erro ? "erro" : ""}">${esc(a)}</span>`).join("") || '<span class="ok">ok</span>'}</td>
+    </tr>`).join("");
+}
+
+async function atualizar() {
+  try { desenhar(await api("/api/estado")); } catch (e) { /* servidor reiniciando */ }
+  if (estado && estado.progresso.ativo) setTimeout(atualizar, 700);
+}
+
+$("gab").addEventListener("input", () => { gabSujo = true; $("gabMsg").textContent = "alterações não salvas"; });
+document.querySelectorAll(".pesos input").forEach(i => i.addEventListener("input", () => { gabSujo = true; $("gabMsg").textContent = "alterações não salvas"; }));
+async function salvarGab() {
+  const pesos = {};
+  for (const t of ["CE", "NUM", "ABCDE"]) pesos[t] = {acerto: +$("p" + t + "a").value || 0, erro: +$("p" + t + "e").value || 0};
+  gabSujo = false;
+  desenhar(await api("/api/gabarito", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({texto: $("gab").value, pesos})}));
+  if (!estado.gabarito_avisos.length) $("gabMsg").textContent = "gabarito salvo";
+}
+$("salvarGab").onclick = salvarGab;
+$("abrirGab").onclick = () => $("arqGab").click();
+$("arqGab").onchange = async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  if (MODO === "navegador") {           // cartão-gabarito entra pelo mesmo caminho dos cartões e é reconhecido
+    ev.target.value = "";
+    if (/\.(pdf|png|jpe?g|tiff?|bmp)$/i.test(f.name)) return enviarNavegador([f]);
+    try {
+      const r = await api("/api/gabarito-arquivo?nome=" + encodeURIComponent(f.name), {method: "POST", body: new Uint8Array(await f.arrayBuffer())});
+      $("gab").value = r.texto; await salvarGab();
+      $("gabMsg").innerHTML = "gabarito lido e salvo. " + r.avisos.map(a => `<span class="aviso">${esc(a)}</span>`).join("");
+    } catch (e) { $("gabMsg").innerHTML = `<span class="aviso erro">${esc(e.message)}</span>`; }
+    return;
+  }
+  const fd = new FormData(); fd.append("arquivo", f);
+  if ($("gab").value.trim() && /\.(pdf|png|jpe?g|tiff?)$/i.test(f.name) && !gabSujo) fd.append("somar", "1");
+  $("gabMsg").textContent = "lendo…";
+  try {
+    const r = await api("/api/gabarito-arquivo", {method: "POST", body: fd});
+    $("gab").value = r.texto;
+    await salvarGab();   // já salva: as notas aparecem na hora
+    const n = Object.values(estado.gabarito).reduce((a, b) => a + b, 0);
+    $("gabMsg").innerHTML = (n ? "gabarito lido e salvo. " : '<span class="aviso erro">não achei respostas nesse arquivo</span> ')
+      + r.avisos.map(a => `<span class="aviso">${esc(a)}</span>`).join("");
+  } catch (e) { $("gabMsg").innerHTML = `<span class="aviso erro">${esc(e.message)}</span>`; }
+  ev.target.value = "";
+};
+
+async function enviar(arquivos) {
+  if (!arquivos.length) return;
+  if (MODO === "navegador") return enviarNavegador(arquivos);
+  const fd = new FormData();
+  for (const f of arquivos) fd.append("arquivos", f);
+  $("prog").hidden = false; $("progTxt").textContent = "Enviando…";
+  try { await api("/api/cartoes", {method: "POST", body: fd}); } catch (e) { alert(e.message); }
+  atualizar();
+}
+const solta = $("solta");
+solta.onclick = () => $("arqCartoes").click();
+$("arqCartoes").onchange = ev => { enviar([...ev.target.files]); ev.target.value = ""; };
+solta.ondragover = ev => { ev.preventDefault(); solta.classList.add("sobre"); };
+solta.ondragleave = () => solta.classList.remove("sobre");
+solta.ondrop = ev => { ev.preventDefault(); solta.classList.remove("sobre"); enviar([...ev.dataTransfer.files]); };
+$("soAvisos").onchange = () => desenhar(estado);
+$("reler").onclick = async () => { try { await api("/api/reler", {method: "POST"}); } catch (e) { alert(e.message); } atualizar(); };
+$("limpar").onclick = async () => {
+  if (!estado.cartoes.length || !confirm(`Apagar os ${estado.cartoes.length} cartões lidos? O gabarito continua salvo.`)) return;
+  desenhar(await api("/api/cartoes", {method: "DELETE"}));
+};
+
+function abrirDetalhe(d) {
+  atual = d;
+  $("dTit").textContent = d.info.nome || `${d.arquivo} — pág. ${d.pagina}`;
+  if (MODO === "navegador") bin("GET", `/img/${d.id}.jpg`).then(r => { $("dImg").src = URL.createObjectURL(new Blob([r.dados], {type: "image/jpeg"})); });
+  else $("dImg").src = `/img/${d.id}.jpg?t=${Date.now()}`;
+  $("dNome").value = d.info.nome || ""; $("dMat").value = d.info.matricula || "";
+  $("dNum").value = d.info.numero || ""; $("dTurma").value = d.info.turma || ""; $("dTipo").value = d.info.tipo_prova || "";
+  $("dAvisos").innerHTML = d.avisos.map(a => `<span class="aviso ${d.erro ? "erro" : ""}">${esc(a)}</span>`).join("");
+  const nomeSt = {certa: "certa", errada: "errada", branco: "em branco", dupla: "dupla", anulada: "anulada", sem_gabarito: ""};
+  $("dItens").innerHTML = d.itens.map(i => `
+    <tr class="${i.status} ${d.duvidas.includes(i.n) ? "duvida" : ""}"><td>${i.n}</td>
+    <td><input data-n="${i.n}" value="${esc(i.lido)}" aria-label="Resposta lida da questão ${i.n}"></td>
+    <td>${esc(i.gabarito)}</td><td class="st">${nomeSt[i.status]}</td></tr>`).join("");
+  if (!$("dlg").open) $("dlg").showModal();
+}
+$("lista").onclick = async ev => {
+  const tr = ev.target.closest("tr.cartao"); if (!tr) return;
+  abrirDetalhe(await api("/api/cartao/" + tr.dataset.id));
+};
+$("dFechar").onclick = () => $("dlg").close();
+$("dSalvar").onclick = async () => {
+  const respostas = {};
+  document.querySelectorAll("#dItens input").forEach(i => respostas[i.dataset.n] = i.value);
+  const info = {nome: $("dNome").value, matricula: $("dMat").value, numero: $("dNum").value, turma: $("dTurma").value, tipo_prova: $("dTipo").value};
+  abrirDetalhe(await api("/api/cartao/" + atual.id, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({info, respostas})}));
+  atualizar();
+};
+$("dApagar").onclick = async () => {
+  if (!confirm("Excluir este cartão da correção?")) return;
+  await api("/api/cartao/" + atual.id, {method: "DELETE"});
+  $("dlg").close(); atualizar();
+};
+$("baixar").onclick = async ev => {
+  if (MODO !== "navegador") return;
+  ev.preventDefault();
+  const r = await bin("GET", "/exportar.xlsx");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([r.dados], {type: r.mime})); a.download = "notas.xlsx"; a.click();
+};
+
+(async () => {   // há servidor local? senão, roda tudo dentro do navegador
+  let servidor = false;
+  if (location.protocol !== "file:") {
+    try { const r = await fetch("api/estado"); servidor = r.ok && (r.headers.get("content-type") || "").includes("json"); } catch (e) { /* sem servidor */ }
+  }
+  if (!servidor) {
+    try { await ligarNavegador(); } catch (e) { $("cargaTxt").textContent = "Falha ao carregar o corretor: " + e.message; return; }
+  }
+  atualizar();
+})();
+</script>
+</body>
+</html>

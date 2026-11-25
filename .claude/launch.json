@@ -1,0 +1,25 @@
+{
+ "version": "0.0.1",
+ "configurations": [
+  {
+   "name": "corretor",
+   "runtimeExecutable": ".venv/bin/python",
+   "runtimeArgs": [
+    "app.py"
+   ],
+   "port": 5055
+  },
+  {
+   "name": "estatico",
+   "runtimeExecutable": ".venv/bin/python",
+   "runtimeArgs": [
+    "-m",
+    "http.server",
+    "5055",
+    "--bind",
+    "127.0.0.1"
+   ],
+   "port": 5055
+  }
+ ]
+}

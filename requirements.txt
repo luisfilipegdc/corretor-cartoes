@@ -1,0 +1,7 @@
+opencv-python-headless
+numpy
+flask
+pymupdf
+openpyxl
+pillow
+ocrmac

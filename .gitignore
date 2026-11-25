@@ -1,0 +1,8 @@
+# dados dos alunos (cartões escaneados, notas) nunca vão para o repositório
+dados/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+*.xlsx
+amostras/
