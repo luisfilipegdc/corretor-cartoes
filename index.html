@@ -137,7 +137,7 @@ tbody tr.aberto{background:#e6eefc}tbody tr.aberto:hover{background:#e6eefc}
     <a class="botao" id="baixar" href="/exportar.xlsx">Baixar planilha (.xlsx)</a>
     <label><input type="checkbox" id="soAvisos"> Mostrar só os que faltam conferir</label>
     <span style="flex:1"></span>
-    <button id="reler" title="Refaz a leitura das imagens já enviadas; o que você corrigiu à mão é mantido">Reler cartões</button>
+    <button id="reler" title="Refaz a leitura (respostas, nome, turma e tipo) das imagens já enviadas; o que você corrigiu à mão é mantido">Reler cartões</button>
     <button class="perigo" id="limpar">Apagar todos os cartões</button>
   </div>
   <div class="rolagem"><table>
@@ -476,7 +476,26 @@ solta.ondragover = ev => { ev.preventDefault(); solta.classList.add("sobre"); };
 solta.ondragleave = () => solta.classList.remove("sobre");
 solta.ondrop = ev => { ev.preventDefault(); solta.classList.remove("sobre"); enviar([...ev.dataTransfer.files]); };
 $("soAvisos").onchange = () => desenhar(estado);
-$("reler").onclick = async () => { try { await api("/api/reler", {method: "POST"}); } catch (e) { alert(e.message); } atualizar(); };
+$("reler").onclick = async () => {
+  try {
+    await api("/api/reler", {method: "POST"});
+    if (MODO === "navegador") {          // aqui o nome, a turma e o tipo são lidos pela página: refaz um por um
+      const ids = (await api("/api/estado")).cartoes.filter(c => !c.erro).map(c => c.id);
+      progLocal = {ativo: true, feito: 0, total: ids.length, etapa: "Relendo nome e turma", erro: "", gabaritos: []};
+      for (const id of ids) {
+        try {
+          const cab = await bin("GET", `/cabecalho/${id}.png`);
+          const linhas = cab.status === 200 ? await lerTexto(new Uint8Array(cab.dados)) : [];
+          if (linhas.length) await api(`/api/cartao/${id}/cabecalho`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({linhas})});
+        } catch (e) { /* segue para o próximo cartão */ }
+        progLocal.feito++;
+        desenhar({...estado, progresso: progLocal});
+      }
+      progLocal = {...progLocal, ativo: false};
+    }
+  } catch (e) { alert(e.message); }
+  atualizar();
+};
 $("limpar").onclick = async () => {
   if (!estado.cartoes.length || !confirm(`Apagar os ${estado.cartoes.length} cartões lidos? O gabarito continua salvo.`)) return;
   desenhar(await api("/api/cartoes", {method: "DELETE"}));

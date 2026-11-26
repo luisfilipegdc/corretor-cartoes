@@ -456,6 +456,25 @@ def api_pagina_texto(cid):
     return jsonify(pendentes[cid]["c"]["info"])
 
 
+@app.post("/api/cartao/<cid>/cabecalho")
+def api_cartao_cabecalho(cid):
+    """Relê a identificação de um cartão já na lista, com o texto que a página leu do cabeçalho.
+
+    O que a pessoa digitou fica; o resto é trocado pelo que foi lido agora.
+    """
+    linhas = [(str(t), float(x), float(y)) for t, x, y in request.get_json(force=True).get("linhas", [])]
+    novo = cabecalho.interpretar(linhas)
+    with trava:
+        c = _achar(cid)
+        for k, v in novo.items():
+            if k in ("gabarito", "qr") or not v:
+                continue
+            if not c["editado"] or not c["info"].get(k):
+                c["info"][k] = v
+        _salvar()
+    return jsonify(c["info"])
+
+
 @app.post("/api/grupo")
 def api_grupo():
     """Fecha o grupo de cartões pendentes: escolhe o layout, lê as marcações e põe na lista."""
