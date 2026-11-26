@@ -56,7 +56,9 @@ def interpretar(linhas: list[tuple[str, float, float]]) -> dict:
     linhas = sorted(linhas, key=lambda l: (round(l[2] * 40), l[1]))
     texto = "\n".join(l[0] for l in linhas)
     info["gabarito"] = bool(re.search(r"(?i)GABARITO\s+DE\s+CORRE", texto))
-    m = re.search(r"(\d{6,})\s*[/|]\s*([^\n]+)", texto)
+    # a barra entre a matrícula e o nome às vezes é lida como "!", "l", "1"…: depois de "Matrícula/Nome:" aceita qualquer sinal
+    m = (re.search(r"(?i)Matr[^\n:]{0,14}:\s*(\d{6,})[^\w\n]{0,4}(?:[lI1]\s+)?([^\n]+)", texto)
+         or re.search(r"(\d{6,})\s*[/|!\\]\s*([^\n]+)", texto))
     if m:
         info["matricula"] = m.group(1)
         nome = re.sub(r"\s+TIPO\s+[A-Z]\s*$", "", m.group(2))
