@@ -143,7 +143,7 @@ def _reler():
                 mantidos.append(c)
             else:
                 era_editado = c["editado"]
-                c.update(respostas=[], avisos=[], erro="", layout="", editado=False)
+                c.update(respostas=[], avisos=[], erro="", layout="", editado=False, conferido=False)
                 if era_editado:
                     c["avisos"].append("relido: as correções manuais anteriores foram descartadas porque as questões mudaram")
                 if lay is None:
@@ -273,7 +273,7 @@ def _opcoes(tipo: str) -> list[str]:
 def _resumo(c: dict, gab: dict) -> dict:
     cor = _corrigido(c, gab)
     return {"id": c["id"], "arquivo": c["arquivo"], "pagina": c["pagina"], "info": c["info"], "erro": c["erro"],
-            "editado": c["editado"], "avisos": _avisos(c, cor, gab), "tipo_sugerido": _sugerir_tipo(c, gab), "questoes": len(c["respostas"]),
+            "editado": c["editado"], "conferido": bool(c.get("conferido")), "avisos": _avisos(c, cor, gab), "tipo_sugerido": _sugerir_tipo(c, gab), "questoes": len(c["respostas"]),
             "nota": cor and cor["nota"], "maximo": cor and cor["maximo"],
             "certa": cor and cor["certa"], "errada": cor and cor["errada"],
             "branco": cor and cor["branco"], "dupla": cor and cor["dupla"]}
@@ -505,6 +505,8 @@ def api_cartao_editar(cid):
                 r["dupla"] = "+" in r["resposta"]
                 r["duvida"] = False
         c["editado"] = True
+        if "conferido" in d:      # a pessoa olhou o cartão na tela de conferência e confirmou
+            c["conferido"] = bool(d["conferido"])
         _salvar()
     return api_cartao(cid)
 

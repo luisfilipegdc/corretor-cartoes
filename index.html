@@ -9,6 +9,24 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--fundo);color:var(--tinta);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 header{padding:18px 24px 6px}h1{font-size:22px;margin:0}header p{margin:2px 0 0;color:var(--suave)}
+.trilha{position:sticky;top:0;z-index:5;display:flex;gap:8px;padding:10px 24px;background:var(--fundo);border-bottom:1px solid var(--borda);overflow-x:auto}
+.trilha a{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;border:1px solid var(--borda);background:#fff;color:var(--suave);text-decoration:none;font-size:13.5px;white-space:nowrap}
+.trilha a i{font-style:normal;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#e7eaf0;color:var(--suave);font-weight:700;font-size:12.5px}
+.trilha a.agora{border-color:var(--azul);color:var(--tinta);font-weight:600}.trilha a.agora i{background:var(--azul);color:#fff}
+.trilha a.feito{color:var(--tinta)}.trilha a.feito i{background:var(--verde);color:#fff}
+.trilha a small{font-weight:400;color:var(--suave)}
+h2 .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#e7eaf0;color:var(--suave);font-size:14px;margin-right:8px}
+section.feito h2 .n{background:var(--verde);color:#fff}section.agora h2 .n{background:var(--azul);color:#fff}
+section{scroll-margin-top:64px}
+button:focus-visible,.botao:focus-visible,input:focus-visible,textarea:focus-visible,.solta:focus-visible{outline:2px solid var(--azul);outline-offset:2px}
+button:hover:not(:disabled),.botao:hover{border-color:#b9c2d0}button.principal:hover:not(:disabled),.botao.principal:hover{filter:brightness(1.08)}
+.botao.principal{background:var(--azul);border-color:var(--azul);color:#fff;font-weight:600}
+.fila{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;border-radius:10px;margin-bottom:12px;background:var(--ambar-f);color:#5c3d00}
+.fila.pronto{background:#e6f4ea;color:#14532d}.fila b{font-size:15px}.fila .barra{flex:1;min-width:120px;height:8px;border-radius:99px;background:#0001;overflow:hidden}
+.fila .barra div{height:100%;background:var(--verde);border-radius:99px;transition:width .3s}
+tbody tr.pend td:first-child{box-shadow:inset 3px 0 0 #d9a100}
+.conf{color:var(--suave);font-size:12.5px}
+.solta b{display:block;font-size:17px;color:var(--tinta);margin-bottom:4px}.solta.sobre b{color:var(--azul)}
 main{padding:12px 24px 60px;display:grid;gap:16px;max-width:1500px}
 section{background:var(--painel);border:1px solid var(--borda);border-radius:10px;padding:16px 18px}
 h2{font-size:16px;margin:0 0 10px}h2 small{font-weight:400;color:var(--suave);margin-left:6px}
@@ -41,7 +59,11 @@ dialog{border:0;border-radius:12px;padding:0;width:min(1250px,96vw);height:92vh;
 dialog::backdrop{background:#0007}
 .det{display:grid;grid-template-columns:1fr 390px;height:100%}
 .det .img{overflow:auto;background:#444}.det .img img{width:100%;display:block}
-.det aside{padding:14px 16px;overflow:auto;border-left:1px solid var(--borda)}
+.det aside{display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--borda)}
+.det .topo{padding:12px 16px;border-bottom:1px solid var(--borda)}.det .topo .nota{font-size:20px;font-weight:700}
+.det .meio{flex:1;overflow:auto;padding:4px 16px 14px;min-height:0}
+.det .pe{padding:10px 16px;border-top:1px solid var(--borda);background:#fafbfc;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.det .pe .dica{margin:0;flex-basis:100%}
 .det label{display:block;font-size:12px;color:var(--suave);margin-top:8px}
 .det input{width:100%;padding:6px 8px;border:1px solid var(--borda);border-radius:6px;font:inherit}
 .itens input{width:74px;text-transform:uppercase}.itens td{padding:3px 6px;border:0}
@@ -53,9 +75,14 @@ dialog::backdrop{background:#0007}
 <body>
 <header><h1>Corretor de Cartões Resposta</h1><p id="modo">Tudo roda neste computador; nenhum cartão sai daqui.</p></header>
 <div id="carga" hidden style="margin:10px 24px;padding:12px 16px;background:#eef4ff;border:1px solid #c9d8f5;border-radius:10px"><b>Preparando o corretor…</b> <span id="cargaTxt"></span><div class="dica">Na primeira vez baixa cerca de 40 MB; depois abre rápido.</div></div>
+<nav class="trilha" id="trilha" aria-label="Passos da correção">
+  <a href="#s1" id="t1"><i>1</i><span>Gabarito</span> <small id="t1s"></small></a>
+  <a href="#s2" id="t2"><i>2</i><span>Cartões</span> <small id="t2s"></small></a>
+  <a href="#s3" id="t3"><i>3</i><span>Conferir e baixar</span> <small id="t3s"></small></a>
+</nav>
 <main>
-<section>
-  <h2>1. Gabarito <small id="gabResumo"></small></h2>
+<section id="s1">
+  <h2><span class="n">1</span>Gabarito <small id="gabResumo"></small></h2>
   <div class="duas">
     <div>
       <p class="dica" style="margin-top:0">Envie o cartão <b>“Gabarito de correção”</b> de cada tipo de prova (PDF ou imagem). Se a prova tem Tipo A e Tipo B, são dois gabaritos: pode enviar os dois de uma vez ou um depois do outro.</p>
@@ -86,22 +113,23 @@ dialog::backdrop{background:#0007}
   </div>
 </section>
 
-<section>
-  <h2>2. Cartões respondidos</h2>
-  <div class="solta" id="solta">Arraste aqui os PDFs escaneados ou as imagens dos cartões, ou clique para escolher</div>
+<section id="s2">
+  <h2><span class="n">2</span>Cartões respondidos <small id="cartResumo"></small></h2>
+  <div class="solta" id="solta" tabindex="0" role="button"><b>Arraste os cartões para cá</b>ou clique para escolher · PDF do scanner ou imagens · pode mandar vários arquivos de uma vez</div>
   <input type="file" id="arqCartoes" hidden multiple accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp">
   <div id="prog" hidden style="margin-top:10px"><div class="dica" id="progTxt"></div><progress id="progBar" max="1" value="0"></progress></div>
   <div id="progErro" class="aviso erro" hidden></div>
 </section>
 
-<section>
-  <h2>3. Resultados</h2>
+<section id="s3">
+  <h2><span class="n">3</span>Conferir e baixar</h2>
+  <div class="fila" id="fila" hidden></div>
   <div class="dica" id="porTipo" hidden style="margin-bottom:10px"></div>
   <div class="aviso erro" id="semGab" hidden style="font-size:14px;padding:8px 12px;margin-bottom:10px">Ainda não há gabarito salvo, por isso as notas não aparecem. Envie o cartão “Gabarito de correção” no passo 1.</div>
   <div class="resumo" id="resumo"></div>
   <div class="linha" style="margin:0 0 10px">
     <a class="botao" id="baixar" href="/exportar.xlsx">Baixar planilha (.xlsx)</a>
-    <label><input type="checkbox" id="soAvisos"> Mostrar só os que precisam de conferência</label>
+    <label><input type="checkbox" id="soAvisos"> Mostrar só os que faltam conferir</label>
     <span style="flex:1"></span>
     <button id="reler" title="Refaz a leitura das imagens já enviadas; o que você corrigiu à mão é mantido">Reler cartões</button>
     <button class="perigo" id="limpar">Apagar todos os cartões</button>
@@ -110,22 +138,32 @@ dialog::backdrop{background:#0007}
     <thead><tr><th>Turma</th><th>Nº</th><th>Matrícula</th><th>Nome</th><th>Tipo</th><th class="num">Nota</th><th class="num">Certas</th><th class="num">Erradas</th><th class="num">Branco</th><th>Conferir</th></tr></thead>
     <tbody id="lista"></tbody>
   </table></div>
-  <p class="dica" id="vazio">Nenhum cartão lido ainda.</p>
+  <p class="dica" id="vazio">Quando você enviar os cartões, cada aluno aparece aqui com a nota. Os que tiverem alguma dúvida de leitura ficam marcados para você conferir antes de baixar a planilha.</p>
 </section>
 </main>
 
 <dialog id="dlg"><div class="det">
   <div class="img"><img id="dImg" alt="Cartão com as marcações lidas"></div>
   <aside>
-    <div class="linha" style="margin:0"><b id="dTit" style="flex:1"></b><button id="dFechar">Fechar</button></div>
-    <p class="dica">Contorno <b class="ok">verde</b> = certa, <b style="color:var(--verm)">vermelho</b> = errada, <b style="color:#0a6ad0">azul</b> = resposta do gabarito.</p>
-    <div id="dAvisos"></div>
-    <label>Nome<input id="dNome"></label>
-    <label>Matrícula<input id="dMat"></label>
-    <div class="linha" style="margin:0"><label style="flex:1">Turma<input id="dTurma"></label><label style="flex:1">Nº<input id="dNum"></label><label style="flex:1">Tipo de prova<input id="dTipo" maxlength="1"></label></div>
-    <p class="dica">Se a leitura errou alguma questão, corrija o campo “lido” e salve. Use <b>A+C</b> para dupla e vazio para em branco.</p>
-    <table class="itens"><thead><tr><th>Q</th><th>Lido</th><th>Gab.</th><th></th></tr></thead><tbody id="dItens"></tbody></table>
-    <div class="linha"><button class="principal" id="dSalvar">Salvar correções</button><button class="perigo" id="dApagar">Excluir cartão</button></div>
+    <div class="topo">
+      <div class="linha" style="margin:0"><b id="dTit" style="flex:1"></b><button id="dFechar" aria-label="Fechar">Fechar ✕</button></div>
+      <div class="linha" style="margin:4px 0 0"><span class="nota" id="dNota"></span><span class="dica" id="dPos" style="margin:0 0 0 auto"></span></div>
+    </div>
+    <div class="meio">
+      <div id="dAvisos" style="margin-top:8px"></div>
+      <label>Nome<input id="dNome"></label>
+      <label>Matrícula<input id="dMat"></label>
+      <div class="linha" style="margin:0"><label style="flex:1">Turma<input id="dTurma"></label><label style="flex:1">Nº<input id="dNum"></label><label style="flex:1">Tipo de prova<input id="dTipo" maxlength="1"></label></div>
+      <p class="dica">Na imagem: contorno <b class="ok">verde</b> = certa, <b style="color:var(--verm)">vermelho</b> = errada, <b style="color:#0a6ad0">azul</b> = resposta do gabarito. Se a leitura errou, corrija o campo “lido” (<b>A+C</b> para dupla, vazio para em branco). As linhas em amarelo são as de leitura duvidosa.</p>
+      <table class="itens"><thead><tr><th>Q</th><th>Lido</th><th>Gab.</th><th></th></tr></thead><tbody id="dItens"></tbody></table>
+      <p style="margin:14px 0 0"><button class="perigo" id="dApagar" style="font-size:13px;padding:4px 10px">Excluir este cartão</button></p>
+    </div>
+    <div class="pe">
+      <button class="principal" id="dSalvar">Salvar e fechar</button>
+      <button id="dSalvarProx" hidden>Salvar e ver o próximo</button>
+      <button id="dAnt" title="Cartão anterior">‹ Anterior</button><button id="dProx" title="Próximo cartão sem salvar">Pular ›</button>
+      <span class="dica" id="dMsg"></span>
+    </div>
   </aside>
 </div></dialog>
 
@@ -264,6 +302,11 @@ async function enviarNavegador(arquivos) {
   desenhar(await api("/api/estado"));
 }
 
+// precisa de conferência: tem aviso e ninguém confirmou; cartão ilegível ou sem nota continua pendente mesmo salvo
+// e problema de gabarito (tipo errado, nº de questões diferente) não some com "está certo": só corrigindo o gabarito ou o tipo
+const SEM_SAIDA = /^(cartão tem \d+ questões|gabarito não combina|não sei qual gabarito|aluno aparece)/;
+const pendente = c => c.avisos.length > 0 && (!c.conferido || !!c.erro || c.avisos.some(a => SEM_SAIDA.test(a))
+                                              || (Object.keys(estado.gabarito).length > 0 && !c.maximo));
 function desenhar(e) {
   estado = e;
   if (!gabSujo) {
@@ -290,13 +333,38 @@ function desenhar(e) {
   const so = $("soAvisos").checked;
   const cs = e.cartoes;
   const notas = cs.filter(c => c.nota != null && c.maximo).map(c => c.nota);
-  const pend = cs.filter(c => c.avisos.length).length;
+  const pend = cs.filter(pendente).length;
+  const comAviso = cs.filter(c => c.avisos.length).length;
   $("resumo").innerHTML = cs.length ? `
     <div><b>${cs.length}</b><span>cartões lidos</span></div>
     <div><b>${notas.length ? fmt(notas.reduce((a, b) => a + b, 0) / notas.length) : "—"}</b><span>nota média</span></div>
     <div><b>${notas.length ? fmt(Math.max(...notas)) : "—"}</b><span>maior nota</span></div>
     <div><b>${notas.length ? fmt(Math.min(...notas)) : "—"}</b><span>menor nota</span></div>
-    <div><b style="color:${pend ? "var(--ambar)" : "var(--verde)"}">${pend}</b><span>precisam de conferência</span></div>` : "";
+` : "";
+  // fila de conferência: quanto falta e o próximo passo (um só botão em destaque por vez)
+  const fila = $("fila"); fila.hidden = !cs.length || p.ativo;
+  fila.className = "fila" + (pend ? "" : " pronto");
+  fila.innerHTML = pend
+    ? `<b>${pend === 1 ? "Falta conferir 1 cartão" : "Faltam conferir " + pend + " cartões"}</b>
+       <span>${comAviso - pend ? (comAviso - pend) + " de " + comAviso + " já conferidos" : "lidos sem nenhuma dúvida: " + (cs.length - comAviso) + " de " + cs.length}</span>
+       <span class="barra"><div style="width:${comAviso ? Math.round(100 * (comAviso - pend) / comAviso) : 0}%"></div></span>
+       <button class="principal" id="conferir">Conferir ${pend === 1 ? "agora" : "o próximo"}</button>`
+    : `<b>✓ ${cs.length === 1 ? "1 cartão lido" : cs.length + " cartões lidos"}, nada pendente</b><span>${tipos.length ? "A planilha está pronta para baixar." : "Falta o gabarito para calcular as notas (passo 1)."}</span>`;
+  $("baixar").className = "botao" + (cs.length && !pend && tipos.length ? " principal" : "");
+  $("baixar").textContent = pend ? `Baixar planilha mesmo assim (${pend} sem conferir)` : "Baixar planilha (.xlsx)";
+  $("baixar").style.visibility = cs.length ? "" : "hidden";
+  // trilha: o que já foi feito e qual é o passo de agora
+  const feito = [tipos.length > 0, cs.length > 0, cs.length > 0 && !pend && tipos.length > 0];
+  const agora = p.ativo ? 1 : feito.indexOf(false);
+  [1, 2, 3].forEach((n, i) => {
+    const cl = feito[i] && i !== agora ? "feito" : i === agora ? "agora" : "";
+    $("t" + n).className = cl; $("s" + n).className = cl;
+    $("t" + n).querySelector("i").textContent = cl === "feito" ? "✓" : n;
+  });
+  $("t1s").textContent = tipos.length ? (tipos.length === 1 ? "1 enviado" : tipos.length + " tipos") : "";
+  $("t2s").textContent = p.ativo ? `lendo ${p.feito}/${p.total}` : cs.length ? cs.length + " lidos" : "";
+  $("t3s").textContent = cs.length ? (pend ? pend + " a conferir" : "pronto") : "";
+  $("cartResumo").textContent = cs.length ? (cs.length === 1 ? "1 cartão lido" : cs.length + " cartões lidos") + " — pode enviar mais" : "";
   const porTipo = {}, tiposGab = tipos.map(x => x[0]);
   cs.forEach(c => { const t = c.info.tipo_prova || ""; porTipo[t] = (porTipo[t] || 0) + 1; });
   const nomes = Object.keys(porTipo).sort((a, b) => (a === "") - (b === "") || a.localeCompare(b));
@@ -307,14 +375,15 @@ function desenhar(e) {
   }).join(" · ");
   $("vazio").hidden = cs.length > 0;
   $("semGab").hidden = !(cs.length && !tipos.length);
-  $("lista").innerHTML = cs.filter(c => !so || c.avisos.length).map(c => `
-    <tr class="cartao" data-id="${c.id}">
+  $("lista").innerHTML = cs.filter(c => !so || pendente(c)).map(c => `
+    <tr class="cartao ${pendente(c) ? "pend" : ""}" data-id="${c.id}">
       <td>${esc(c.info.turma)}</td><td>${esc(c.info.numero)}</td><td>${esc(c.info.matricula)}</td>
       <td>${esc(c.info.nome) || `<span class="dica">${esc(c.arquivo)} — pág. ${c.pagina}</span>`}${c.editado ? ' <span class="dica">(editado)</span>' : ""}</td>
       <td>${esc(c.info.tipo_prova)}${c.tipo_sugerido ? `<button class="usarTipo" data-tipo="${esc(c.tipo_sugerido.tipo)}" title="${c.tipo_sugerido.certas} acertos com o gabarito ${esc(c.tipo_sugerido.tipo)}, ${c.tipo_sugerido.outro} com o outro">Usar ${esc(c.tipo_sugerido.tipo)}?</button>` : ""}</td>
       <td class="num"><b>${c.maximo ? fmt(c.nota) : "—"}</b>${c.maximo ? `<span class="dica"> / ${fmt(c.maximo)}</span>` : ""}</td>
       <td class="num">${c.maximo ? c.certa : "—"}</td><td class="num">${c.maximo ? c.errada + c.dupla : "—"}</td><td class="num">${c.maximo ? c.branco : "—"}</td>
-      <td>${c.avisos.map(a => `<span class="aviso ${c.erro ? "erro" : ""}">${esc(a)}</span>`).join("") || '<span class="ok">ok</span>'}</td>
+      <td>${!c.avisos.length ? '<span class="ok">ok</span>' : pendente(c) ? c.avisos.map(a => `<span class="aviso ${c.erro ? "erro" : ""}">${esc(a)}</span>`).join("")
+            : `<span class="conf" title="${esc(c.avisos.join("; "))}">✓ conferido por você</span>`}</td>
     </tr>`).join("");
 }
 
@@ -408,6 +477,14 @@ $("limpar").onclick = async () => {
 function abrirDetalhe(d) {
   atual = d;
   $("dTit").textContent = d.info.nome || `${d.arquivo} — pág. ${d.pagina}`;
+  $("dNota").textContent = d.maximo ? `${fmt(d.nota)} de ${fmt(d.maximo)}` : "sem nota";
+  const ordem = estado.cartoes.map(c => c.id), pos = ordem.indexOf(d.id);
+  const faltam = estado.cartoes.filter(c => pendente(c) && c.id !== d.id).length;
+  $("dPos").textContent = `cartão ${pos + 1} de ${ordem.length}`;
+  $("dAnt").disabled = pos <= 0; $("dProx").disabled = pos < 0 || pos >= ordem.length - 1;
+  $("dSalvarProx").hidden = !faltam;
+  $("dMsg").textContent = faltam ? `depois deste ${faltam === 1 ? "falta 1" : "faltam " + faltam} para conferir` : "";
+  document.querySelector(".det .meio").scrollTop = 0;
   if (MODO === "navegador") bin("GET", `/img/${d.id}.jpg`).then(r => { $("dImg").src = URL.createObjectURL(new Blob([r.dados], {type: "image/jpeg"})); });
   else $("dImg").src = `/img/${d.id}.jpg?t=${Date.now()}`;
   $("dNome").value = d.info.nome || ""; $("dMat").value = d.info.matricula || "";
@@ -431,13 +508,32 @@ $("lista").onclick = async ev => {
   abrirDetalhe(await api("/api/cartao/" + tr.dataset.id));
 };
 $("dFechar").onclick = () => $("dlg").close();
-$("dSalvar").onclick = async () => {
+const abrirId = async id => abrirDetalhe(await api("/api/cartao/" + id));
+function proximoPendente(depoisDe) {     // o próximo que falta conferir, dando a volta na lista
+  const cs = estado.cartoes, i = cs.findIndex(c => c.id === depoisDe);
+  return [...cs.slice(i + 1), ...cs.slice(0, Math.max(i, 0))].find(pendente);
+}
+async function salvarCartao(irAoProximo) {
   const respostas = {};
   document.querySelectorAll("#dItens input").forEach(i => respostas[i.dataset.n] = i.value);
   const info = {nome: $("dNome").value, matricula: $("dMat").value, numero: $("dNum").value, turma: $("dTurma").value, tipo_prova: $("dTipo").value};
-  abrirDetalhe(await api("/api/cartao/" + atual.id, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({info, respostas})}));
-  atualizar();
-};
+  const id = atual.id;
+  $("dSalvar").disabled = $("dSalvarProx").disabled = true;
+  try {
+    await api("/api/cartao/" + id, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({info, respostas, conferido: true})});
+    desenhar(await api("/api/estado"));
+    const prox = irAoProximo && proximoPendente(id);
+    if (prox && prox.id !== id) await abrirId(prox.id); else $("dlg").close();
+  } catch (e) { alert(e.message); }
+  $("dSalvar").disabled = $("dSalvarProx").disabled = false;
+}
+$("dSalvar").onclick = () => salvarCartao(false);
+$("dSalvarProx").onclick = () => salvarCartao(true);
+const vizinho = passo => { const o = estado.cartoes.map(c => c.id), n = o[o.indexOf(atual.id) + passo]; if (n) abrirId(n); };
+$("dAnt").onclick = () => vizinho(-1);
+$("dProx").onclick = () => vizinho(1);
+$("fila").onclick = ev => { if (ev.target.id === "conferir") { const c = estado.cartoes.find(pendente); if (c) abrirId(c.id); } };
+$("solta").onkeydown = ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); $("arqCartoes").click(); } };
 $("dApagar").onclick = async () => {
   if (!confirm("Excluir este cartão da correção?")) return;
   await api("/api/cartao/" + atual.id, {method: "DELETE"});
