@@ -162,12 +162,12 @@ tbody tr.aberto{background:#e6eefc}tbody tr.aberto:hover{background:#e6eefc}
       <div class="linha" style="margin:0"><label style="flex:1">Turma<input id="dTurma"></label><label style="flex:1">Nº<input id="dNum"></label><label style="flex:1">Tipo de prova<input id="dTipo" maxlength="1"></label></div>
       <p class="dica">Na imagem: contorno <b class="ok">verde</b> = certa, <b style="color:var(--verm)">vermelho</b> = errada, <b style="color:#0a6ad0">azul</b> = resposta do gabarito. Se a leitura errou, corrija o campo “lido” (<b>A+C</b> para dupla, vazio para em branco). As linhas em amarelo são as de leitura duvidosa.</p>
       <table class="itens"><thead><tr><th>Q</th><th>Lido</th><th>Gab.</th><th></th></tr></thead><tbody id="dItens"></tbody></table>
-      <p style="margin:14px 0 0"><button class="perigo" id="dApagar" style="font-size:13px;padding:4px 10px">Excluir este cartão</button></p>
     </div>
     <div class="pe">
       <button class="principal" id="dSalvar">Salvar e fechar</button>
       <button id="dSalvarProx" hidden>Salvar e ver o próximo</button>
       <button id="dAnt" title="Cartão anterior">‹ Anterior</button><button id="dProx" title="Próximo cartão sem salvar">Pular ›</button>
+      <button class="perigo" id="dApagar" style="margin-left:auto">Excluir cartão</button>
       <span class="dica" id="dMsg"></span>
     </div>
   </aside>
