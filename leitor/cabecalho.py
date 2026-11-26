@@ -33,6 +33,21 @@ def _ocr(img_cinza: np.ndarray) -> list[tuple[str, float, float]]:
     return sorted(linhas, key=lambda l: (round(l[2] * 40), l[1]))
 
 
+def preparar(cinza: np.ndarray) -> np.ndarray:
+    """Limpa o recorte do cabeçalho para o OCR: fundo branco uniforme e tinta bem escura.
+
+    Cópia fraca (tinta cinza), sombra do scanner e papel amarelado atrapalham mais o OCR do que a resolução.
+    """
+    g = cv2.GaussianBlur(cinza, (3, 3), 0)
+    lado = max(31, (g.shape[0] // 8) | 1)
+    fundo = cv2.medianBlur(cv2.dilate(g, np.ones((9, 9), np.uint8)), lado if lado % 2 else lado + 1)
+    plano = cv2.divide(g, fundo, scale=255)                      # papel vira ~255 em toda a área
+    escuro = float(np.percentile(plano, 2))                      # tom da tinta
+    if escuro < 200:
+        plano = np.clip((plano.astype(np.float32) - escuro) * (255.0 / (245.0 - escuro)), 0, 255).astype(np.uint8)
+    return plano
+
+
 def ler(reta: np.ndarray | None) -> dict:
     """Identificação lida do cabeçalho; com `None` devolve os campos vazios."""
     info = {"nome": "", "matricula": "", "numero": "", "tipo_prova": "", "codigo": "", "turma": "", "prova": "", "qr": "", "gabarito": False}
@@ -57,17 +72,18 @@ def interpretar(linhas: list[tuple[str, float, float]]) -> dict:
     texto = "\n".join(l[0] for l in linhas)
     info["gabarito"] = bool(re.search(r"(?i)GABARITO\s+DE\s+CORRE", texto))
     # a barra entre a matrícula e o nome às vezes é lida como "!", "l", "1"…: depois de "Matrícula/Nome:" aceita qualquer sinal
-    m = (re.search(r"(?i)Matr[^\n:]{0,14}:\s*(\d{6,})[^\w\n]{0,4}(?:[lI1]\s+)?([^\n]+)", texto)
+    # e dígito lido como letra parecida (O, l, S, B) é desfeito, porque ali só há número
+    m = (re.search(r"(?i)Matr[^\n:]{0,14}:\s*((?-i:[\dOolISB]{6,}))[^\w\n]{0,4}(?:[lI1]\s+)?([^\n]+)", texto)
          or re.search(r"(\d{6,})\s*[/|!\\]\s*([^\n]+)", texto))
     if m:
-        info["matricula"] = m.group(1)
+        info["matricula"] = m.group(1).translate(str.maketrans("OolISB", "001158"))
         nome = re.sub(r"\s+TIPO\s+[A-Z]\s*$", "", m.group(2))
         limpo = re.match(r"[A-Za-zÀ-ÿ' .-]+", nome.strip())      # corta lixo que o OCR põe depois do nome
         info["nome"] = (limpo.group(0) if limpo else nome).strip(" -_/.")
     m = re.search(r"N[º°o\.]{0,2}\s*[:;]?\s*(\d{1,4})\s*-", texto)
     if m:
         info["numero"] = m.group(1)
-    m = re.search(r"\bTIPO\s+([A-Z])\b", texto)
+    m = re.search(r"\bT[I1l]P[O0]\s*[:\-]?\s*([A-Z])\b", texto)
     if m:
         info["tipo_prova"] = m.group(1)
     m = re.search(r"\*+\s*(\d{4,})\s*\*+", texto) or re.search(r"(?m)^\D{0,3}(0\d{5})\D{0,3}$", texto)
@@ -88,6 +104,10 @@ def interpretar(linhas: list[tuple[str, float, float]]) -> dict:
     info["prova"] = " ".join(titulo)[:160]
     # OCR mais fraco troca o dígito da série por letra parecida ("EM3AM" vira "EMSAM"): a série também está
     # no nome da prova ("3ª Série"), então usamos esse dígito
+    # e às vezes enfia um "S" a mais ao lado do dígito ("EM3AM" vira "EM3SAM" ou "EMS3SAM")
+    m = re.fullmatch(r"([A-Z]{2})S?(\d)S?([A-Z]{2})", info["turma"])
+    if m and len(info["turma"]) > 5:
+        info["turma"] = "".join(m.groups())
     t = info["turma"]
     serie = re.search(r"(\d)\s*[ªºa°]\s*S[ée]rie", info["prova"], re.I)
     if serie and len(t) >= 4 and not any(ch.isdigit() for ch in t) and t[2] in "SZBOIGE":

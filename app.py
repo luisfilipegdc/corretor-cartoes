@@ -112,6 +112,7 @@ def _fechar_lote(lidos: list[dict]) -> list[dict]:
                                               + (" (confira as questões " + ", ".join(ruins) + ")" if ruins else "")
                                               + (" (aceitam mais de uma resposta: " + ", ".join(duplas) + ")" if duplas else ""))
                 (RETAS / f"{c['id']}.jpg").unlink(missing_ok=True)
+                (RETAS / f"{c['id']}_cab.jpg").unlink(missing_ok=True)
         lidos = [it for it in lidos if not (it["c"]["info"].get("gabarito") and it["c"]["respostas"])]
         return [it["c"] for it in lidos]
 
@@ -235,6 +236,8 @@ def _avisos(c: dict, cor: dict | None, gab: dict) -> list[str]:
         av.append("dupla marcação: " + ", ".join(str(i["n"]) for i in cor["itens"] if i["status"] == "dupla"))
     if not c["info"].get("nome"):
         av.append("nome não lido")
+    elif c["info"].get("nome_duvida"):
+        av.append("nome lido com pouca certeza — confira com a imagem")
     if gab:
         chave = gabarito.escolher(gab, c["info"].get("tipo_prova", ""))
         if chave is None:
@@ -418,6 +421,7 @@ def api_reler():
 # ---- OCR do macOS, então a página manda uma folha por vez e o texto do cabeçalho já lido
 
 pendentes: dict[str, dict] = {}
+CONF_NOME = 70     # abaixo desta confiança (0–100) do OCR do navegador, o nome vai para conferência
 
 
 @app.post("/api/pagina")
@@ -426,7 +430,8 @@ def api_pagina():
     import numpy as np
     dados = np.frombuffer(request.get_data(), dtype=np.uint8)
     img = cv2.imdecode(dados, cv2.IMREAD_COLOR) if len(dados) else None
-    item = lote.ler_imagem(img, int(request.args.get("pagina", 1)) - 1, request.args.get("nome", "cartão"), str(RETAS))
+    item = lote.ler_imagem(img, int(request.args.get("pagina", 1)) - 1, request.args.get("nome", "cartão"), str(RETAS),
+                            guardar_cabecalho=True)
     item["c"]["info"] = cabecalho.ler(None)
     pendentes[item["c"]["id"]] = item
     return jsonify({"id": item["c"]["id"], "erro": item["c"]["erro"], "tem_imagem": item["bolhas"] is not None})
@@ -434,14 +439,16 @@ def api_pagina():
 
 @app.get("/cabecalho/<cid>.png")
 def cabecalho_png(cid):
-    reta = cv2.imread(str(RETAS / f"{cid}.jpg"), cv2.IMREAD_GRAYSCALE)
-    if reta is None:
-        abort(404)
-    topo = reta[: omr.MT - 22].copy()
+    topo = cv2.imread(str(RETAS / f"{cid}_cab.jpg"), cv2.IMREAD_GRAYSCALE)     # recorte em alta resolução, se houver
+    if topo is None:
+        reta = cv2.imread(str(RETAS / f"{cid}.jpg"), cv2.IMREAD_GRAYSCALE)
+        if reta is None:
+            abort(404)
+        topo = cv2.resize(reta[: omr.MT - 22], None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+    topo = cabecalho.preparar(topo)
     h, w = topo.shape
     topo[: int(h * 0.845), int(w * 0.835):] = 255      # apaga o QR code, que o OCR do navegador lê como lixo
     topo[: int(h * 0.60), int(w * 0.455): int(w * 0.835)] = 255   # e o quadro de instruções, que embaralha as linhas
-    topo = cv2.resize(topo, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
     ok, buf = cv2.imencode(".png", topo)
     return send_file(io.BytesIO(buf.tobytes()), mimetype="image/png", max_age=0)
 
@@ -451,9 +458,12 @@ def api_pagina_texto(cid):
     """Corpo: {"linhas": [[texto, x_centro, y_topo], ...]} vindas do OCR feito na página."""
     if cid not in pendentes:
         abort(404)
-    linhas = [(str(t), float(x), float(y)) for t, x, y in request.get_json(force=True).get("linhas", [])]
-    pendentes[cid]["c"]["info"] = cabecalho.interpretar(linhas)
-    return jsonify(pendentes[cid]["c"]["info"])
+    d = request.get_json(force=True)
+    linhas = [(str(t), float(x), float(y)) for t, x, y in d.get("linhas", [])]
+    info = cabecalho.interpretar(linhas)
+    info["nome_duvida"] = bool(info["nome"]) and float(d.get("conf_nome", 100)) < CONF_NOME
+    pendentes[cid]["c"]["info"] = info
+    return jsonify(info)
 
 
 @app.post("/api/cartao/<cid>/cabecalho")
@@ -462,10 +472,13 @@ def api_cartao_cabecalho(cid):
 
     O que a pessoa digitou fica; o resto é trocado pelo que foi lido agora.
     """
-    linhas = [(str(t), float(x), float(y)) for t, x, y in request.get_json(force=True).get("linhas", [])]
+    d = request.get_json(force=True)
+    linhas = [(str(t), float(x), float(y)) for t, x, y in d.get("linhas", [])]
     novo = cabecalho.interpretar(linhas)
     with trava:
         c = _achar(cid)
+        if novo["nome"] and not c["editado"]:
+            c["info"]["nome_duvida"] = float(d.get("conf_nome", 100)) < CONF_NOME
         for k, v in novo.items():
             if k in ("gabarito", "qr") or not v:
                 continue
@@ -494,6 +507,7 @@ def api_limpar():
             return jsonify({"erro": "leitura em andamento"}), 409
         for c in estado["cartoes"]:
             (RETAS / f"{c['id']}.jpg").unlink(missing_ok=True)
+            (RETAS / f"{c['id']}_cab.jpg").unlink(missing_ok=True)
         estado["cartoes"], estado["layouts"] = [], {}
         _salvar()
     return api_estado()
@@ -517,6 +531,8 @@ def api_cartao_editar(cid):
         for k in ("nome", "matricula", "numero", "tipo_prova", "turma"):
             if k in (d.get("info") or {}):
                 c["info"][k] = str(d["info"][k]).strip().upper() if k == "tipo_prova" else str(d["info"][k]).strip()
+        if "nome" in (d.get("info") or {}):
+            c["info"]["nome_duvida"] = False
         novas = {int(k): str(v).strip().upper() for k, v in (d.get("respostas") or {}).items()}
         for r in c["respostas"]:
             if r["n"] in novas and novas[r["n"]] != r["resposta"]:
@@ -536,6 +552,7 @@ def api_cartao_apagar(cid):
         c = _achar(cid)
         estado["cartoes"].remove(c)
         (RETAS / f"{cid}.jpg").unlink(missing_ok=True)
+        (RETAS / f"{cid}_cab.jpg").unlink(missing_ok=True)
         _salvar()
     return jsonify({"ok": True})
 

@@ -27,7 +27,7 @@ def _pagina(caminho: str, indice: int):
     return omr.carregar_paginas(caminho)[0]
 
 
-def ler_imagem(img, indice: int, nome: str, pasta_retas: str) -> dict:
+def ler_imagem(img, indice: int, nome: str, pasta_retas: str, guardar_cabecalho: bool = False) -> dict:
     """Endireita, guarda a imagem e acha as bolhas de uma página já aberta. Não lança exceção.
 
     O cabeçalho (nome, turma...) é lido depois.
@@ -40,8 +40,14 @@ def ler_imagem(img, indice: int, nome: str, pasta_retas: str) -> dict:
             img = img()
         if img is None:
             raise omr.ErroLeitura("arquivo não é uma imagem nem um PDF legível")
-        reta, H = omr.endireitar(img)
+        extra = {}
+        reta, H = omr.endireitar(img, extra)
         cv2.imwrite(f"{pasta_retas}/{c['id']}.jpg", reta, [cv2.IMWRITE_JPEG_QUALITY, 88])
+        if guardar_cabecalho:     # no navegador o OCR é mais fraco: guarda o cabeçalho em alta resolução para ele
+            try:
+                cv2.imwrite(f"{pasta_retas}/{c['id']}_cab.jpg", omr.cabecalho_alta(img, extra), [cv2.IMWRITE_JPEG_QUALITY, 90])
+            except cv2.error:
+                pass
         item["bolhas"] = omr.achar_bolhas(reta, H)
         item["lay"] = omr.montar_layout(reta, item["bolhas"], H)
         if item["lay"] is None:

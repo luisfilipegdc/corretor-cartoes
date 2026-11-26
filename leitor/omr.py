@@ -144,9 +144,14 @@ def _quatro_cantos(cands, forma) -> np.ndarray | None:
     return np.array([tl, tr, br, bl], dtype=np.float32)
 
 
-def endireitar(img: np.ndarray) -> tuple[np.ndarray, int]:
-    """Devolve (imagem cinza endireitada, H) onde H é a altura entre marcadores."""
+def endireitar(img: np.ndarray, extra: dict | None = None) -> tuple[np.ndarray, int]:
+    """Devolve (imagem cinza endireitada, H) onde H é a altura entre marcadores.
+
+    Com `extra` (um dict), guarda nele o necessário para recortar a folha original em alta resolução
+    (ver `cabecalho_alta`).
+    """
     g = _cinza_normalizado(img)
+    girada = False
     for tentativa in range(2):
         cantos = _achar_cantos(g)
         if cantos is None:
@@ -162,6 +167,7 @@ def endireitar(img: np.ndarray) -> tuple[np.ndarray, int]:
         baixo = escuro[min(g.shape[0], y_bot + 20):min(g.shape[0], y_bot + faixa)].sum()
         if tentativa == 0 and baixo > cima * 1.5 and baixo > 2000:
             g = cv2.rotate(g, cv2.ROTATE_180)
+            girada = True
             continue
         break
     alt = (np.linalg.norm(bl - tl) + np.linalg.norm(br - tr)) / 2
@@ -169,7 +175,26 @@ def endireitar(img: np.ndarray) -> tuple[np.ndarray, int]:
     dst = np.array([(MX, MT), (MX + W, MT), (MX + W, MT + H), (MX, MT + H)], dtype=np.float32)
     M = cv2.getPerspectiveTransform(cantos, dst)
     reta = cv2.warpPerspective(g, M, (W + 2 * MX, H + MT + MB), flags=cv2.INTER_LINEAR, borderValue=255)
+    if extra is not None:
+        extra.update(M=M, girada=girada)
     return reta, H
+
+
+def cabecalho_alta(img: np.ndarray, extra: dict, escala: float = 2.5) -> np.ndarray:
+    """O cabeçalho (acima dos marcadores) recortado direto da folha original, sem passar pela redução.
+
+    O texto do nome tem poucos pixels de altura na imagem endireitada; tirado do original e ampliado
+    uma vez só, o OCR erra bem menos.
+    """
+    g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img
+    if g.shape[1] > g.shape[0]:
+        g = cv2.rotate(g, cv2.ROTATE_90_CLOCKWISE)
+    if extra.get("girada"):
+        g = cv2.rotate(g, cv2.ROTATE_180)
+    e = LARGURA_PAGINA / g.shape[1]
+    total = np.diag([escala, escala, 1.0]) @ extra["M"].astype(np.float64) @ np.diag([e, e, 1.0])
+    tam = (int(round((W + 2 * MX) * escala)), int(round((MT - 22) * escala)))
+    return cv2.warpPerspective(g, total, tam, flags=cv2.INTER_CUBIC, borderValue=255)
 
 
 # ---------------------------------------------------------------- bolhas

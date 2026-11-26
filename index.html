@@ -249,7 +249,26 @@ async function lerTexto(png) {   // OCR do cabeçalho: [[texto, x do centro, y d
   const blob = new Blob([png], {type: "image/png"});
   const bmp = await createImageBitmap(blob);
   const {data} = await ocr.recognize(blob);
-  return (data.lines || []).map(l => {
+  const brutas = data.lines || [];
+  // segunda leitura só da linha "Nº … Matrícula/Nome": lida sozinha, como linha única, erra bem menos
+  const achada = brutas.find(l => /Matr|Nome\s*:/i.test(l.text));
+  const alt = achada ? achada.bbox.y1 - achada.bbox.y0 : bmp.height * 0.085;
+  const topo = achada ? achada.bbox.y0 - alt * 0.3 : bmp.height * 0.675;
+  let confNome = achada ? achada.confidence : 0, textoNome = null;
+  try {
+    await ocr.setParameters({tessedit_pageseg_mode: "7"});
+    const r2 = await ocr.recognize(blob, {rectangle: {left: 0, top: Math.max(0, Math.round(topo)), width: Math.round(bmp.width * 0.835), height: Math.round(alt * 1.6)}});
+    const t2 = (r2.data.text || "").trim();
+    if (/\d{6,}/.test(t2) && (!achada || !/\d{6,}/.test(achada.text) || r2.data.confidence >= achada.confidence)) {
+      textoNome = t2.replace(/\s+/g, " "); confNome = r2.data.confidence;
+      // as duas leituras discordam no nome? então uma delas errou: manda para conferência
+      const soNome = t => (t.split(/\d{6,}/)[1] || "").replace(/TIPO\s+[A-Z]\s*$/, "").replace(/[^A-Za-zÀ-ÿ]/g, "").toUpperCase();
+      if (achada && soNome(achada.text) && soNome(achada.text) !== soNome(t2)) confNome = Math.min(confNome, 40);
+    }
+  } catch (e) { /* fica com a primeira leitura */ }
+  finally { await ocr.setParameters({tessedit_pageseg_mode: "6"}); }
+  const linhas = brutas.map(l => {
+    if (l === achada && textoNome) return [textoNome, 0.4, l.bbox.y0 / bmp.height];
     // no quadro de cima, ignora o que está na faixa do logotipo (à esquerda), que só atrapalha o nome da prova
     const alto = l.bbox.y0 / bmp.height < 0.6;
     const ps = (l.words || []).filter(w => !alto || (w.bbox.x0 + w.bbox.x1) / 2 / bmp.width > 0.115);
@@ -257,6 +276,18 @@ async function lerTexto(png) {   // OCR do cabeçalho: [[texto, x do centro, y d
     const x0 = Math.min(...ps.map(w => w.bbox.x0)), x1 = Math.max(...ps.map(w => w.bbox.x1));
     return [ps.map(w => w.text).join(" ").trim(), (x0 + x1) / 2 / bmp.width, l.bbox.y0 / bmp.height];
   }).filter(l => l[0]);
+  if (!achada && textoNome) linhas.push([textoNome, 0.4, topo / bmp.height]);
+  // "TIPO B" fica no fim da linha da assinatura, que a letra de mão embaralha: se não saiu, lê só aquele canto
+  if (!linhas.some(l => /\bT[I1l]P[O0]\s*[A-Z]\b/.test(l[0]))) {
+    try {
+      await ocr.setParameters({tessedit_pageseg_mode: "7"});
+      const r3 = await ocr.recognize(blob, {rectangle: {left: Math.round(bmp.width * 0.60), top: Math.round(topo + alt * 1.25), width: Math.round(bmp.width * 0.235), height: Math.round(alt * 1.5)}});
+      const m = /T[I1l]P[O0]\s*([A-Z])\b/.exec(r3.data.text || "");
+      if (m) linhas.push(["TIPO " + m[1], 0.72, (topo + alt * 1.3) / bmp.height]);
+    } catch (e) { /* fica sem o tipo; a tela pede para conferir */ }
+    finally { await ocr.setParameters({tessedit_pageseg_mode: "6"}); }
+  }
+  return {linhas, conf_nome: Math.round(confNome)};
 }
 async function paginasDe(arquivo) {   // [{nome, pagina, obter()}]: obter devolve os bytes de uma folha
   if (!/\.pdf$/i.test(arquivo.name))
@@ -295,8 +326,8 @@ async function enviarNavegador(arquivos) {
         if (r.tem_imagem) {
           try {
             const png = await bin("GET", `/cabecalho/${r.id}.png`);
-            const linhas = await lerTexto(png.dados);
-            await api(`/api/pagina/${r.id}/texto`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({linhas})});
+            const lido = await lerTexto(png.dados);
+            await api(`/api/pagina/${r.id}/texto`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(lido)});
           } catch (e) { console.warn("OCR do cabeçalho falhou", e); }
         }
         progLocal.feito++;
@@ -487,8 +518,8 @@ $("reler").onclick = async () => {
       for (const id of ids) {
         try {
           const cab = await bin("GET", `/cabecalho/${id}.png`);
-          const linhas = cab.status === 200 ? await lerTexto(new Uint8Array(cab.dados)) : [];
-          if (linhas.length) await api(`/api/cartao/${id}/cabecalho`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({linhas})});
+          const lido = cab.status === 200 ? await lerTexto(new Uint8Array(cab.dados)) : {linhas: []};
+          if (lido.linhas.length) await api(`/api/cartao/${id}/cabecalho`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(lido)});
         } catch (e) { /* segue para o próximo cartão */ }
         progLocal.feito++;
         desenhar({...estado, progresso: progLocal});
